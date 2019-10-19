@@ -68,6 +68,7 @@ void print_array(int arr[], int size)
         printf("%d ",arr[i]);
     printf("\n");
 }
+/*
 int main(void)
 {
     clock_t start, end;
@@ -77,7 +78,7 @@ int main(void)
     int n = sizeof(arr) / sizeof(arr[0]);
     int n2 = sizeof(arr2) / sizeof(arr2[0]);
 
-    /*  */
+  
     printf("quicksort\n");
     printf("Array before sorting: ");
     print_array(arr, n);
@@ -88,7 +89,7 @@ int main(void)
     print_array(arr, n);
 
     printf("Duration: %f s\n", ((double)(end - start) / CLOCKS_PER_SEC));
-    /*   */
+
     printf("qsort\n");
     start = clock();
     qsort(arr2, 0, n2-1);
@@ -100,3 +101,4 @@ int main(void)
 
     return 0;
 }
+*/
