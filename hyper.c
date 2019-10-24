@@ -26,38 +26,53 @@ char* to_binary(int n, int length)
     *(ptr+count)='\0';
     return ptr;
 }
+int get_size(int arr[])
+{
+    int count = 0;
+
+    for (int j = 0; j < 10; j++)
+    {
+
+        if (arr[j] > 0)
+        { 
+            count++;
+        }
+        else
+        { 
+
+            return count;
+        }
+    }
+    return count;
+}
 
 int main(int argc, char* argv[])
 {
     
-    int num_tasks, task_id,child_id, size, degree = 3, pivot, color;
-    int recv_data[10];
+    int num_tasks, global_id, task_id,child_id, size, degree = 3, pivot, color, color_degree_1;
+    int recv_data[10], upper[10], lower[10];
+    int* active_data; 
+    int *temp;
+    int empty_data[] = {0,0,0,0};
+    int lower_count, upper_count;
 
     MPI_Init(&argc, &argv);
 
-    MPI_Comm childcomm;
+    MPI_Comm childcomm, childcomm_degree_1, childcomm_degree_2;
 
     MPI_Comm_size(MPI_COMM_WORLD, &num_tasks);
     MPI_Comm_rank(MPI_COMM_WORLD, &task_id);
+    MPI_Comm_rank(MPI_COMM_WORLD, &global_id);
     MPI_Comm_size(MPI_COMM_WORLD, &num_tasks);
 
     /*Scatter parts of array to each process*/
     if (task_id == 0)
     {
-        int n[16] = { 1,11,21,31,41,51,61,71,81,91,101,111,121,131,141,151 };
+        int n[16] = { 11,85,21,31,41,51,61,71,81,91,101,111,121,131,141,151 };
         size = (sizeof(n)/sizeof(int))/num_tasks;
    
         MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Scatter(n, size, MPI_INT, &recv_data, size, MPI_INT, 0, MPI_COMM_WORLD);
-        /*
-        printf("Task %d: in mpi_comm_world\t", task_id);
-
-        for (int i = 0; i < size; i++)
-        {
-            if (recv_data[i] > 0)
-                printf("%d\t", recv_data[i]);
-        }
-        */
     }
     else
     {
@@ -65,128 +80,305 @@ int main(int argc, char* argv[])
         MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Scatter(&n, 0, MPI_INT, &recv_data, size, MPI_INT, 0, MPI_COMM_WORLD);
 
-        //printf("Task %d in MPI_comm_world\t", task_id);
-        /*
-        for (int i = 0; i < size; i++)
-        {
-            if (recv_data[i] > 0)
-                printf("%d\t", recv_data[i]);
-        }
-        */
     }
     /* END initial scattering*/
-
+     temp = (int*)malloc(sizeof(int)*size);
+     for (int i = 0; i < size; i++)
+     {
+         temp[i] = recv_data[i];
+     }
+    active_data = temp;
     
     /*
         figure out binary
         rank 0 bcast pivot
     */
-    int max = 1;
+    int max = 3;
     for (int d = 0; d < max; d++)
     {
-        /*
-        char* str;
-        str = to_binary(task_id, degree);
-        char * str_copy = to_binary(task_id, degree);
-       
-        if (str_copy[d] == '1')
-            str_copy[d] = '0';
-        else
-            str_copy[d] = '1';
-        printf(" %s and %s \n", str, str_copy);
-        printf("Task: %d binary[%d] : %c\n", task_id,d, str[d]);
+        
 
-        */
 
-        if (d == 0)
+        printf("\t[task id: %d] \n", global_id);
+        if ( d == 0 )
         {
 
             //comm split
-            if (task_id == 0 || task_id == 4)
+            if (global_id == 0 || global_id == 4)
             {
                 color = 0;
             }
-            else if (task_id == 1 || task_id == 5)
+            else if (global_id == 1 || global_id == 5)
             {
                 color = 1;
             }
-            else if (task_id == 2 || task_id == 6)
+            else if (global_id == 2 || global_id == 6)
             {
                 color = 2;
             }
             else
             {
+                /* 3 & 7 */
                 color = 3;
             }
-            MPI_Comm_split(MPI_COMM_WORLD, color, task_id, &childcomm);
-            //printf("comm_world rank:  %d", task_id);
 
-            MPI_Comm_rank(childcomm, &child_id);
-//            printf("Color:Rank in childcomm is  %d:%d\n",color, child_id);
-            /*
-                Split the comm
-            
-            */
-            int data[2];
-
-            if (child_id == 0)
+            /* bcast pivot */
+            if (task_id == 0)
             {
-                MPI_Send(&recv_data[0], 1, MPI_INT, 1, 0, childcomm);
-                MPI_Send(&recv_data[1], 1, MPI_INT, 1, 0, childcomm);
-
-
-                MPI_Recv(&data[0], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
-                MPI_Recv(&data[1], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
-
-            }
-            else
-            {   
-                MPI_Recv(&data[0], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
-                MPI_Recv(&data[1], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
-
-                MPI_Send(&recv_data[0], 1, MPI_INT, 0, 0, childcomm);
-                MPI_Send(&recv_data[1], 1, MPI_INT, 0, 0, childcomm);
-
-            }
-            int working_arr[] = { data[0], data[1], recv_data[0], recv_data[1] };
-
-            if (child_id == 0)
-            {
-
-                //printf("task_id: %d binary: %s\n", task_id, str);
-
-                pivot = (sizeof(working_arr)/sizeof(int))/2;
-                MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm);
+                int pivot_index = size/ 2;
+                pivot = active_data[pivot_index];
+                MPI_Bcast(&pivot, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
             }
             else
             {
 
-                //printf("task_id: %d binary: %s\n", task_id, str);
                 pivot = 0;
-                MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm);
-
-
+                MPI_Bcast(&pivot, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
             }
-            printf("pivot data is: %d in ", working_arr[pivot]);
-            printf("arr = %d\t%d\t%d\t%d\n", data[0], data[1], recv_data[0], recv_data[1]);
+            printf("pivot data is: %d", pivot);
+
+        }
+        else if (d == 1)
+        {
+
+            if (global_id == 0 || global_id == 2)
+            {
+                color = 0;
+                color_degree_1 = 0;
+            }
+            else if (global_id == 1 || global_id == 3)
+            {
+                color = 1;
+                color_degree_1 = 0;
+
+            }
+            else if (global_id == 4 || global_id == 6)
+            {
+                color = 2;
+                color_degree_1 = 1;
+
+            }
+            else
+            {
+                /* 5 & 7 */
+                color = 3;
+                color_degree_1 = 1;
+
+            }
+            /* split comms 0 2 1 3, 4 6 5 7*/
+
+           MPI_Comm_split(MPI_COMM_WORLD, color_degree_1, task_id, &childcomm_degree_1);
+           MPI_Comm_rank(childcomm_degree_1, &task_id);
+
+           /* bcast pivot */
+           if (task_id == 0)
+           {
+               int pivot_index = size / 2;
+               pivot = active_data[pivot_index];
+              // printf("\t%d task in degree 1 is sending %d\n", task_id, pivot);
+               MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm_degree_1);
+
+           }
+           else
+           {
+
+               pivot = 0;
+               MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm_degree_1);
+              //printf("\t%d task in degree 1 is recving %d\n", task_id, pivot);
+
+           }
+
+        }
+        else if (d == 2)
+        {
+            
+            if (global_id == 0 || global_id == 1)
+            {
+                color = 0;
+            }
+            else if (global_id == 2 || global_id == 3)
+            {
+                color = 1;
+
+            }
+            else if (global_id == 4 || global_id == 5)
+            {
+                color = 2;
+
+            }
+            else
+            {
+                /* 6 & 7 */
+                color = 3;
+
+            }
+            /* split comms 0 1, 2 3 , 4 5, 6 7*/
+
+            MPI_Comm_split(MPI_COMM_WORLD, color, task_id, &childcomm_degree_2);
+            MPI_Comm_rank(childcomm_degree_2, &task_id);
+
+            /* bcast pivot */
+            if (task_id == 0)
+            {
+                int pivot_index = size / 2;
+                pivot = active_data[pivot_index];
+                if (pivot < 0)
+                {
+                    pivot = 0;
+                }
+                printf("\t%d task in degree 2 is sending %d\n", task_id, pivot);
+                MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm_degree_2);
+
+            }
+            else
+            {
+
+                pivot = 0;
+                MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm_degree_2);
+                printf("\t%d task in degree 2 is recving %d\n", task_id, pivot);
+
+            }
+
+        }
 
 
-            /*
-                separate array into lower end and higher end
-                if smaller than pivot, 
-            */
+        
+        MPI_Comm_split(MPI_COMM_WORLD, color, task_id, &childcomm);
+        MPI_Comm_rank(childcomm, &child_id);
+        
+        
+        /*
+            Split the comm between processor partners
+            
+        */
+        int data[2];
+
+        if (child_id == 0)
+        {
+            
+            MPI_Send(&active_data[0], 1, MPI_INT, 1, 0, childcomm);
+            MPI_Send(&active_data[1], 1, MPI_INT, 1, 0, childcomm);
+            
+
+            MPI_Recv(&data[0], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+            MPI_Recv(&data[1], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+
+        }
+        else
+        {   
+
+            MPI_Recv(&data[0], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
+            MPI_Recv(&data[1], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
+
+            MPI_Send(&active_data[0], 1, MPI_INT, 0, 0, childcomm);
+            MPI_Send(&active_data[1], 1, MPI_INT, 0, 0, childcomm);
+
+        }
+
+        int working_arr[4 ];
+        if (data[0] < 0 )
+        {
+            working_arr[0] = active_data[0];
+            working_arr[1] = active_data[1];
+        }
+        if (data[0] > 0 && data[0] < 1)
+        {
+            working_arr[0] = data[0];
+            working_arr[1] = active_data[0];
+            working_arr[2] = active_data[1];
+
+
+        }
+        else if (data[0] > 0 && data[1] > 0)
+        {
+            working_arr[0] = data[0];
+            working_arr[1] = data[1];
+            working_arr[2] = active_data[0];
+            working_arr[3] = active_data[1];
+        }
+        else
+        {
+            printf("edge case?\n");
+            working_arr[0] = active_data[0];
+            working_arr[1] = active_data[1];
+        }
+           
+
+        /* reset active data */
+        active_data = empty_data;
+        
+        printf("arr = ");
+
+        for (int i = 0; i < get_size(working_arr); i++)
+        {
+            printf("%d\t", working_arr[i]);
+        }
+        printf("\n");
+
+        /*
+            separate array into lower end and higher end
+            if smaller than pivot, 
+        */
+        lower_count = 0;
+        upper_count = 0;
+
+        for (int l = 0; l < size*2; l++)
+        {
+            lower[l] = -1;
+            upper[l] = -1;
+        }
+
+        for (int i = 0; i < size*2; i++)
+        {
+            if (d == 1)
+            {
+                printf("\t\t\t%d ? %d\n", working_arr[i], pivot);
+            }
+
+            if (working_arr[i] < pivot)
+            {
+
+                lower[lower_count] = working_arr[i];
+                lower_count++;
+            }
+            else if (working_arr[i] >= pivot)
+            {
+
+                upper[upper_count] = working_arr[i];
+                upper_count++;
+
+            }
+        }
+           
+ 
+
+        /* keep lower if child_id == 0*/
+
+        if (child_id == 0)
+        {
+            active_data = lower;
+        }
+        else
+        {
+            active_data = upper;
         }
         
 
         
 
+        printf("[%d] active arr:\t{", d);
+
+        for (int i = 0; i < get_size(active_data); i++)
+        {
+            printf("%d, \t", active_data[i]);
+        }
+        printf("}\n\n\n");
 
         
 
 
-//        free(str);
     }
 
     MPI_Finalize();

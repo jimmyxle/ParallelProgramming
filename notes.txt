@@ -1,0 +1,29 @@
+/*
+        char* str;
+        str = to_binary(task_id, degree);
+        char * str_copy = to_binary(task_id, degree);
+       
+        if (str_copy[d] == '1')
+            str_copy[d] = '0';
+        else
+            str_copy[d] = '1';
+        printf(" %s and %s \n", str, str_copy);
+        printf("Task: %d binary[%d] : %c\n", task_id,d, str[d]);
+
+        */
+
+               /* print upper and lower values 
+        printf("lower arr:\t");
+
+        for (int i = 0; i < get_size(lower); i++)
+        {
+            printf("%d\t", lower[i]);
+        }
+        printf("\n");
+        printf("upper arr:\t");
+        for (int i = 0; i < get_size(upper); i++)
+        {
+            printf("%d\t", upper[i]);
+        }
+        printf("\n");
+        */
