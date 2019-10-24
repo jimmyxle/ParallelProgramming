@@ -3,6 +3,40 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+ #include <stdio.h>
+ #include <time.h>
+
+ void swap_num(int* low, int* high)
+ {
+     int temp = *low;
+     *low = *high;
+     *high = temp;
+ }
+
+void qusort(int arr[], int q, int r)
+{
+    int x, s;
+    if (q < r)
+    {
+        x = arr[q];
+        s = q;
+        for (int i = q+1; i <= r; i++)
+        {
+            if(arr[i]<=x)
+            {
+                s = s + 1;
+                swap_num(&arr[s], &arr[i]);
+            }
+        }
+        swap_num(&arr[q], &arr[s]);
+        qusort(arr, q, s);
+        qusort(arr, s+1, r);
+    }
+}
+
+
+
 char* to_binary(int n, int length)
 {
     /* taken from https://www.programmingsimplified.com/c/source-code/c-program-convert-decimal-to-binary */
@@ -466,9 +500,24 @@ int main(int argc, char* argv[])
 
     }
 	printf("data that was supposed to be sent by: %d = ",global_id);
-    for(int i =0; i < get_size(active_data); i++)
+
+	if(global_id == 0)
 	{
-	int data = active_data[i];
+		printf("\nsorting\n");
+		/*
+ 		int*  arr_to_send2=(int*)malloc(sizeof(int)*get_size(active_data));
+		for (int i =0;i < 16; i++)
+		{
+			arr_to_send2[i] = active_data[i];
+	
+		}
+		*/
+		qusort(recv_n,0,15);	
+
+	}
+    for(int i =0; i < 16; i++)
+	{
+	int data = recv_n[i];
 	printf("%d, ", data);
 	}
 	printf("\n");
