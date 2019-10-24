@@ -421,12 +421,16 @@ int main(int argc, char* argv[])
         for (int r = 0; r < 8; r++)
         {
             total = r*recvcounts[r];
-            displs[r] = total;
-            
-            
+            displs[r] = total;    
         }
 
-        MPI_Gatherv(&active_data, active_size, MPI_INT, &recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
+	int* arr_to_send=(int*)malloc(sizeof(int)*active_size);
+	for (int i =0;i < active_size; i++)
+	{
+		arr_to_send[i] = active_data[i];
+	}
+        
+        MPI_Gatherv(arr_to_send, active_size, MPI_INT, &recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
         printf("\n \nGlobal id: %d Received counts: ",global_id);
         for (int i = 0; i < 8; i++) {
@@ -452,14 +456,20 @@ int main(int argc, char* argv[])
         int active_size = get_size(active_data);
         MPI_Gather(&active_size, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
 
-
-        MPI_Gatherv(&active_data, active_size, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
+	printf("%d val[0] %d\n",global_id, &active_data[0]);
+	int* arr_to_send=(int*)malloc(sizeof(int)*active_size);
+	for (int i =0;i < get_size(active_data); i++)
+	{
+		arr_to_send[i] = active_data[i];
+	}
+        MPI_Gatherv(arr_to_send, active_size, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
     }
 	printf("data that was supposed to be sent by: %d = ",global_id);
     for(int i =0; i < get_size(active_data); i++)
 	{
-	printf("%d, ", active_data[i]);
+	int data = active_data[i];
+	printf("%d, ", data);
 	}
 	printf("\n");
 
