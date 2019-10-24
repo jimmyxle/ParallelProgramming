@@ -253,58 +253,103 @@ int main(int argc, char* argv[])
             Split the comm between processor partners
             
         */
-        int data[2];
+        int data[4];
+        int active_size, active_response;
 
         if (child_id == 0)
         {
-            
-            MPI_Send(&active_data[0], 1, MPI_INT, 1, 0, childcomm);
-            MPI_Send(&active_data[1], 1, MPI_INT, 1, 0, childcomm);
-            
+            active_size = get_size(active_data);
+            MPI_Send(&active_size, 1, MPI_INT, 1, 0, childcomm);
 
-            MPI_Recv(&data[0], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
-            MPI_Recv(&data[1], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+            for (int a = 0; a < active_size; a++)
+            {
+                MPI_Send(&active_data[a], 1, MPI_INT, 1, 0, childcomm);
+
+            }
+            //MPI_Send(&active_data[0], 1, MPI_INT, 1, 0, childcomm);
+           // MPI_Send(&active_data[1], 1, MPI_INT, 1, 0, childcomm);
+            
+            active_response = 0;
+            MPI_Recv(&active_response, 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+
+            for (int a = 0; a < active_response; a++)
+            {
+                MPI_Recv(&data[a], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+            }
+           // MPI_Recv(&data[0], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+            //MPI_Recv(&data[1], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
 
         }
         else
         {   
+            active_response = 0;
+            MPI_Recv(&active_response, 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
 
-            MPI_Recv(&data[0], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
-            MPI_Recv(&data[1], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
+            for (int a = 0; a < active_response; a++)
+            {
+                MPI_Recv(&data[a], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
+            }
+            //MPI_Recv(&data[1], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
 
-            MPI_Send(&active_data[0], 1, MPI_INT, 0, 0, childcomm);
-            MPI_Send(&active_data[1], 1, MPI_INT, 0, 0, childcomm);
+            active_size = get_size(active_data);
+            MPI_Send(&active_size, 1, MPI_INT, 0, 0, childcomm);
+
+            for (int a = 0; a < active_size; a++)
+            {
+                MPI_Send(&active_data[a], 1, MPI_INT, 0, 0, childcomm);
+
+            }
+            //MPI_Send(&active_data[0], 1, MPI_INT, 0, 0, childcomm);
+            //MPI_Send(&active_data[1], 1, MPI_INT, 0, 0, childcomm);
 
         }
 
-        int working_arr[4 ];
-        if (data[0] < 0 )
+        int working_arr[10 ];
+        int temp_size = get_size(data) + get_size(active_data);
+        printf("temp_size: %d\n", temp_size);
+
+        int arr_count = 0;
+        for (int i = 0; i < get_size(data); i++)
         {
-            working_arr[0] = active_data[0];
-            working_arr[1] = active_data[1];
+            working_arr[arr_count]=data[i];
+            arr_count++;
         }
-        if (data[0] > 0 && data[0] < 1)
+        for (int i = 0; i < get_size(active_data); i++)
         {
-            working_arr[0] = data[0];
-            working_arr[1] = active_data[0];
-            working_arr[2] = active_data[1];
-
+            working_arr[arr_count]= active_data[i];
+            arr_count++;
 
         }
-        else if (data[0] > 0 && data[1] > 0)
-        {
-            working_arr[0] = data[0];
-            working_arr[1] = data[1];
-            working_arr[2] = active_data[0];
-            working_arr[3] = active_data[1];
-        }
-        else
-        {
-            printf("edge case?\n");
-            working_arr[0] = active_data[0];
-            working_arr[1] = active_data[1];
-        }
-           
+
+
+
+        //if (data[0] < 0 )
+        //{
+        //    working_arr[0] = active_data[0];
+        //    working_arr[1] = active_data[1];
+        //}
+        //if (data[0] > 0 && data[0] < 1)
+        //{
+        //    working_arr[0] = data[0];
+        //    working_arr[1] = active_data[0];
+        //    working_arr[2] = active_data[1];
+
+
+        //}
+        //else if (data[0] > 0 && data[1] > 0)
+        //{
+        //    working_arr[0] = data[0];
+        //    working_arr[1] = data[1];
+        //    working_arr[2] = active_data[0];
+        //    working_arr[3] = active_data[1];
+        //}
+        //else
+        //{
+        //    printf("edge case?\n");
+        //    working_arr[0] = active_data[0];
+        //    working_arr[1] = active_data[1];
+        //}
+        //   
 
         /* reset active data */
         active_data = empty_data;
