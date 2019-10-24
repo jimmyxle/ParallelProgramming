@@ -50,10 +50,9 @@ int main(int argc, char* argv[])
 {
     
     int num_tasks, global_id, task_id,child_id, size, degree = 3, pivot, color, color_degree_1;
-    int recv_data[10], upper[10], lower[10];
+    int recv_data[10], upper[10], lower[10], recv_n[16], recvcounts[8], displs[8];
     int* active_data; 
     int *temp;
-    int empty_data[] = {0,0,0,0};
     int lower_count, upper_count;
 
     MPI_Init(&argc, &argv);
@@ -69,6 +68,7 @@ int main(int argc, char* argv[])
     if (task_id == 0)
     {
         int n[16] = { 11,85,21,31,41,51,61,71,81,91,101,111,121,131,141,151 };
+        
         size = (sizeof(n)/sizeof(int))/num_tasks;
    
         MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
         figure out binary
         rank 0 bcast pivot
     */
-    int max = 3;
+    int max = 2;
     for (int d = 0; d < max; d++)
     {
         
@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
            {
                int pivot_index = size / 2;
                pivot = active_data[pivot_index];
-              // printf("\t%d task in degree 1 is sending %d\n", task_id, pivot);
+               printf("\t%d task in degree 1 is sending %d\n", task_id, pivot);
                MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm_degree_1);
 
            }
@@ -186,7 +186,7 @@ int main(int argc, char* argv[])
 
                pivot = 0;
                MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm_degree_1);
-              //printf("\t%d task in degree 1 is recving %d\n", task_id, pivot);
+              printf("\t%d task in degree 1 is recving %d\n", task_id, pivot);
 
            }
 
@@ -264,10 +264,8 @@ int main(int argc, char* argv[])
             for (int a = 0; a < active_size; a++)
             {
                 MPI_Send(&active_data[a], 1, MPI_INT, 1, 0, childcomm);
-
             }
-            //MPI_Send(&active_data[0], 1, MPI_INT, 1, 0, childcomm);
-           // MPI_Send(&active_data[1], 1, MPI_INT, 1, 0, childcomm);
+
             
             active_response = 0;
             MPI_Recv(&active_response, 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
@@ -276,8 +274,6 @@ int main(int argc, char* argv[])
             {
                 MPI_Recv(&data[a], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
             }
-           // MPI_Recv(&data[0], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
-            //MPI_Recv(&data[1], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
 
         }
         else
@@ -289,7 +285,6 @@ int main(int argc, char* argv[])
             {
                 MPI_Recv(&data[a], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
             }
-            //MPI_Recv(&data[1], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
 
             active_size = get_size(active_data);
             MPI_Send(&active_size, 1, MPI_INT, 0, 0, childcomm);
@@ -297,10 +292,7 @@ int main(int argc, char* argv[])
             for (int a = 0; a < active_size; a++)
             {
                 MPI_Send(&active_data[a], 1, MPI_INT, 0, 0, childcomm);
-
             }
-            //MPI_Send(&active_data[0], 1, MPI_INT, 0, 0, childcomm);
-            //MPI_Send(&active_data[1], 1, MPI_INT, 0, 0, childcomm);
 
         }
 
@@ -322,37 +314,6 @@ int main(int argc, char* argv[])
         }
 
 
-
-        //if (data[0] < 0 )
-        //{
-        //    working_arr[0] = active_data[0];
-        //    working_arr[1] = active_data[1];
-        //}
-        //if (data[0] > 0 && data[0] < 1)
-        //{
-        //    working_arr[0] = data[0];
-        //    working_arr[1] = active_data[0];
-        //    working_arr[2] = active_data[1];
-
-
-        //}
-        //else if (data[0] > 0 && data[1] > 0)
-        //{
-        //    working_arr[0] = data[0];
-        //    working_arr[1] = data[1];
-        //    working_arr[2] = active_data[0];
-        //    working_arr[3] = active_data[1];
-        //}
-        //else
-        //{
-        //    printf("edge case?\n");
-        //    working_arr[0] = active_data[0];
-        //    working_arr[1] = active_data[1];
-        //}
-        //   
-
-        /* reset active data */
-        active_data = empty_data;
         
         printf("arr = ");
 
@@ -369,18 +330,18 @@ int main(int argc, char* argv[])
         lower_count = 0;
         upper_count = 0;
 
-        for (int l = 0; l < size*2; l++)
+        for (int l = 0; l < 10; l++)
         {
             lower[l] = -1;
             upper[l] = -1;
         }
 
-        for (int i = 0; i < size*2; i++)
+        for (int i = 0; i < temp_size; i++)
         {
-            if (d == 1)
-            {
-                printf("\t\t\t%d ? %d\n", working_arr[i], pivot);
-            }
+            //if (d == 2)
+            //{
+            //    printf("\t\t\t%d ? %d\n", working_arr[i], pivot);
+            //}
 
             if (working_arr[i] < pivot)
             {
@@ -400,7 +361,10 @@ int main(int argc, char* argv[])
  
 
         /* keep lower if child_id == 0*/
-
+        if (d == 2)
+        {
+            printf("\n\t\tglobal id: %d, child id: %d\n", global_id, child_id);
+        }
         if (child_id == 0)
         {
             active_data = lower;
@@ -423,6 +387,70 @@ int main(int argc, char* argv[])
 
         
 
+
+    }
+    /* gather all the results and do serial quicksort on it*/
+    if (global_id == 0) {
+        /* int MPI_Gatherv(
+        const void *sendbuf, 
+        int sendcount, 
+        MPI_Datatype sendtype,
+        void *recvbuf, 
+        const int *recvcounts, 
+        const int *displs,
+        MPI_Datatype recvtype, 
+        int root,
+        MPI_Comm comm) */
+
+        /* get counts */
+        int active_size = get_size(active_data);
+
+        MPI_Gather(&active_size, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        int total = -1;
+        for (int r = 0; r < 8; r++)
+        {
+            total += recvcounts[r];
+            if (total < 0)
+            {
+                displs[r] = 0;
+
+            }
+            else
+            {
+                displs[r] = total;
+            }
+            
+        }
+
+        MPI_Gatherv(&active_data, active_size, MPI_INT, &recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
+
+        /*printf("\n \nReceived counts: ");
+        for (int i = 0; i < 8; i++) {
+            printf("%d, ", recvcounts[i]);
+        }
+        printf("\n");
+
+        printf("\n \nReceived displs: ");
+        for (int i = 0; i < 8; i++) {
+            printf("%d, ", displs[i]);
+        }
+        printf("\n");
+        */
+        printf("\n \nReceived data: ");
+        for (int i = 0; i < 16; i++) {
+            printf("%d, ", recv_n[i]);
+        }
+        printf("\n");
+
+
+    }
+    else {
+        int active_size = get_size(active_data);
+        MPI_Gather(&active_size, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+
+
+        MPI_Gatherv(&active_data, active_size, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
     }
 
