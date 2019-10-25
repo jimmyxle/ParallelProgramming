@@ -36,6 +36,10 @@ void qusort(int arr[], int q, int r)
     }
 }
 
+/*
+    followed a tutorial on using qsort from the standard library 
+    https://www.tutorialspoint.com/c_standard_library/c_function_qsort.htm
+*/
 int cmpfunc(const void* a, const void* b) {
     return (*(int*)a - *(int*)b);
 }
@@ -85,7 +89,7 @@ int get_size(int arr[])
 
 int main(int argc, char* argv[])
 {
-    int num_tasks, task_id, child_id, size, degree, pivot, num_elements = 0;
+    int num_tasks, task_id, child_id, size = 0, degree, pivot = 0, num_elements = 0;
     int *recv_buf, *temp_array, *recv_n, *recvcounts ;
     int *active_data, *array_to_sort, mask, bcast_mask, color, bcast_color;
     int *temp, *data, *displs;
@@ -248,7 +252,6 @@ int main(int argc, char* argv[])
             active_data = temp_array;
         }
         free(working_arr);
-
 
     }
     /* gather all the data */
