@@ -85,11 +85,11 @@ int get_size(int arr[])
 
 int main(int argc, char* argv[])
 {
-    int num_tasks, global_id, task_id,child_id, size, degree, pivot, color_degree_1, num_elements =0;
-    int *recv_buf, recv_data[10], *upper, *lower, *recv_n, *recvcounts ;
-    int* active_data, *array_to_sort, mask, bcast_mask, color, bcast_color;
-    int *temp, count_element, *data, *displs;
-    int lower_count, upper_count;
+    int num_tasks, task_id, child_id, size, degree, pivot, num_elements =0;
+    int *recv_buf, *temp_array, *recv_n, *recvcounts ;
+    int *active_data, *array_to_sort, mask, bcast_mask, color, bcast_color;
+    int *temp, *data, *displs;
+    int temp_count;
     time_t t;
 
     /* Intializes random number generator */
@@ -97,14 +97,13 @@ int main(int argc, char* argv[])
 
     MPI_Init(NULL, NULL);
 
-    MPI_Comm childcomm, childcomm_degree_1, childcomm_degree_2;
+    MPI_Comm childcomm;
 
     MPI_Comm_size(MPI_COMM_WORLD, &num_tasks);
     MPI_Comm_rank(MPI_COMM_WORLD, &task_id);
-    MPI_Comm_rank(MPI_COMM_WORLD, &global_id);
     MPI_Comm_size(MPI_COMM_WORLD, &num_tasks);
 
-    degree = log(num_tasks)/log(2); /* 8 p = 3d*/
+    degree = (int)(log(num_tasks)/log(2)); /* 8 p = 3d*/
     /*Scatter parts of array to each process*/
     
     if (argc != 2)
@@ -122,17 +121,19 @@ int main(int argc, char* argv[])
             array_to_sort[i] = i+1;
 
         }
-        printf("array to sort\n");
+        /*printf("array to sort\n");
         for (int i = 0; i < num_elements; i++)
         {
             printf("%d ",array_to_sort[i]);
         }
-        printf("\n");
+        printf("\n");*/
 
         size = num_elements/num_tasks;
         MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
         recv_buf = malloc(sizeof(int)*size);
         MPI_Scatter(array_to_sort, size, MPI_INT, recv_buf, size, MPI_INT, 0, MPI_COMM_WORLD);
+
+        free(array_to_sort);
     }
     else
     {
@@ -154,8 +155,8 @@ int main(int argc, char* argv[])
     active_data = temp;
 
 
-    char* binary_str=to_binary(task_id,3);
-    printf("P%d:%s", task_id,binary_str);
+   // char* binary_str=to_binary(task_id,3);
+   // printf("P%d:%s", task_id,binary_str);
 
     num_elements = size;
 
@@ -191,7 +192,7 @@ int main(int argc, char* argv[])
             arr_size_to_send = num_elements;
             MPI_Send(&arr_size_to_send, 1, MPI_INT, 1, 0, childcomm);
 
-            for (int a = 0; a < arr_size_to_send; a++)
+            for (unsigned int a = 0; a < arr_size_to_send; a++)
             {
                 MPI_Send(&active_data[a], 1, MPI_INT, 1, 0, childcomm);
 
@@ -202,7 +203,7 @@ int main(int argc, char* argv[])
             MPI_Recv(&arr_size_recv, 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
             data = malloc(sizeof(int) * arr_size_recv);
 
-            for (int a = 0; a < arr_size_recv; a++)
+            for (unsigned int a = 0; a < arr_size_recv; a++)
             {
                 MPI_Recv(&data[a], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
             }
@@ -214,7 +215,7 @@ int main(int argc, char* argv[])
             arr_size_recv = 0;
             MPI_Recv(&arr_size_recv, 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
             data = malloc(sizeof(int)*arr_size_recv);
-            for (int a = 0; a < arr_size_recv; a++)
+            for (unsigned int a = 0; a < arr_size_recv; a++)
             {
                 MPI_Recv(&data[a], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
             }
@@ -223,7 +224,7 @@ int main(int argc, char* argv[])
             arr_size_to_send = num_elements;
             MPI_Send(&arr_size_to_send, 1, MPI_INT, 0, 0, childcomm);
 
-            for (int a = 0; a < arr_size_to_send; a++)
+            for (unsigned int a = 0; a < arr_size_to_send; a++)
             {
                 MPI_Send(&active_data[a], 1, MPI_INT, 0, 0, childcomm);
             }
@@ -231,35 +232,32 @@ int main(int argc, char* argv[])
         int size_working_arr = arr_size_recv + arr_size_to_send;
         int* working_arr = malloc(sizeof(int)*size_working_arr);
         //num_elements important
-        for (int i = 0; i < arr_size_recv; i++)
+        for (unsigned int i = 0; i < arr_size_recv; i++)
         {
             working_arr[i] = data[i];
         }
         int start = 0;
-        for (int i = arr_size_recv; i < size_working_arr; i++)
+        for (unsigned int i = arr_size_recv; i < (unsigned int)size_working_arr; i++)
         {
             working_arr[i] = active_data[start];
             start++;
         }
-        printf("||");
         //split into two array according to pivot
-        int* lower = malloc(sizeof(int) * size_working_arr);
-        int* upper = malloc(sizeof(int) * size_working_arr);
-        lower_count = 0;
-        upper_count = 0;
+        temp_array = malloc(sizeof(int) * size_working_arr);
+        temp_count = 0;
         if (child_id == 0)
         {
-            for (int i = 0; i < size_working_arr; i++)
+            for (unsigned int i = 0; i < (unsigned int)size_working_arr; i++)
             {
                 if (pivot > working_arr[i])
                 {
-                    lower[lower_count] = working_arr[i];
-                    lower_count++;
+                    temp_array[temp_count] = working_arr[i];
+                    temp_count++;
                 }
             }
             /* get the number in the array you keep and track the size */
-            num_elements = lower_count;
-            active_data = lower;
+            num_elements = temp_count;
+            active_data = temp_array;
 
         }
         else
@@ -268,12 +266,12 @@ int main(int argc, char* argv[])
             {
                 if (pivot <= working_arr[i])
                 {
-                    upper[upper_count] = working_arr[i];
-                    upper_count++;
+                    temp_array[temp_count] = working_arr[i];
+                    temp_count++;
                 }
             }
-            num_elements = upper_count;
-            active_data = upper;
+            num_elements = temp_count;
+            active_data = temp_array;
         }
         //if (i == 0)
         //{
@@ -296,7 +294,7 @@ int main(int argc, char* argv[])
 
      
         MPI_Gather(&num_elements, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        printf("{%d}", num_elements);
+        //printf("{%d}", num_elements);
 
         int total = 0;
         for (int r = 0; r < num_tasks; r++)
@@ -306,35 +304,13 @@ int main(int argc, char* argv[])
             total += recvcounts[r];
         }
 
-        //printf("\n displs \n");
-        ////qusort(recv_n,0,15);	
-        //for (int i = 0; i < 8; i++)
-        //{
-        //   
-        //    printf("%d, ", displs[i]);
-        //}
-        //printf("\n");
-
         recv_n = malloc(sizeof(int) * atoi(argv[1]) );
         MPI_Gatherv(active_data, num_elements, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
-        //for (int i = 0; i < num_elements; i++)
-        //{
-        //    printf("%d, ", active_data[i]);
-        //}
 
-        printf("\n unsorted\n");
-        //qusort(recv_n,0,15);	
-        for (int i = 0; i < atoi(argv[1]); i++)
-        {
-            int data = recv_n[i];
-            printf("%d ", data);
-        }
-        printf("\n");
 
         qsort(recv_n, atoi(argv[1]), sizeof(int), cmpfunc);
 
         printf("\n sorted \n");
-        //qusort(recv_n,0,15);	
         for (int i = 0; i < atoi(argv[1]); i++)
         {
             int data = recv_n[i];
@@ -347,17 +323,17 @@ int main(int argc, char* argv[])
     else
     {
         MPI_Gather(&num_elements, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
-        printf("{%d}", num_elements);
+        //printf("{%d}", num_elements);
 
         MPI_Gatherv(active_data, num_elements, MPI_INT, NULL, NULL, NULL, MPI_INT, 0, MPI_COMM_WORLD);
-        for (int i = 0; i < num_elements; i++)
+     /*   for (int i = 0; i < num_elements; i++)
         {
  
             printf("%d, ",active_data[i]);
-        }
+        }*/
 
     }
-
+    free(temp);
 
     MPI_Finalize();
     return 0;
