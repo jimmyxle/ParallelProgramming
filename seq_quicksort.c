@@ -5,7 +5,7 @@
  #include <stdio.h>
  #include <time.h>
 
- void swap_num(int* low, int* high)
+ void swap_num1(int* low, int* high)
  {
      int temp = *low;
      *low = *high;
@@ -24,10 +24,10 @@ void qsort(int arr[], int q, int r)
             if(arr[i]<=x)
             {
                 s = s + 1;
-                swap_num(&arr[s], &arr[i]);
+                swap_num1(&arr[s], &arr[i]);
             }
         }
-        swap_num(&arr[q], &arr[s]);
+        swap_num1(&arr[q], &arr[s]);
         qsort(arr, q, s);
         qsort(arr, s+1, r);
     }
@@ -44,10 +44,10 @@ int partition(int array[], int low, int high)
         if (array[j]<pivot)
         {
             lower++;
-            swap_num(&array[lower], &array[j]);
+            swap_num1(&array[lower], &array[j]);
         }
     }
-    swap_num(&array[lower+1], &array[high]);
+    swap_num1(&array[lower+1], &array[high]);
     return lower + 1;
 }
 

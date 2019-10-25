@@ -6,6 +6,7 @@
 
  #include <stdio.h>
  #include <time.h>
+ #include <math.h>
 
  void swap_num(int* low, int* high)
  {
@@ -67,13 +68,12 @@ int get_size(int arr[])
     for (int j = 0; j < 10; j++)
     {
 
-        if (arr[j] > 0 && arr[j]<200) /*linux has junk info that is negative or some large number*/
+        if (arr[j] > 0 && arr[j]<1000) /*linux has junk info that is negative or some large number*/
         { 
             count++;
         }
         else
         { 
-
             return count;
         }
     }
@@ -82,14 +82,17 @@ int get_size(int arr[])
 
 int main(int argc, char* argv[])
 {
-    
-    int num_tasks, global_id, task_id,child_id, size, degree = 3, pivot, color, color_degree_1;
+    int num_tasks, global_id, task_id,child_id, size, degree, pivot, color, color_degree_1, num_elements =0;
     int initial_recv_data[2], recv_data[10], upper[10], lower[10], recv_n[16], recvcounts[8], displs[8];
-    int* active_data; 
+    int* active_data, *array_to_sort; 
     int *temp;
     int lower_count, upper_count;
+    time_t t;
 
-    MPI_Init(&argc, &argv);
+    /* Intializes random number generator */
+    srand((unsigned)time(&t));
+
+    MPI_Init(NULL, NULL);
 
     MPI_Comm childcomm, childcomm_degree_1, childcomm_degree_2;
 
@@ -98,13 +101,31 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &global_id);
     MPI_Comm_size(MPI_COMM_WORLD, &num_tasks);
 
+    degree = log(num_tasks)/log(2); /* 8 p = 3d*/
     /*Scatter parts of array to each process*/
+    
+    if (argc != 2)
+        printf("usage: %s <number of workers>\n", argv[0]);
+    else
+        num_elements = atoi(argv[1]);
+
+
     if (task_id == 0)
     {
+        array_to_sort = (int*)malloc(sizeof(int) * num_elements);
+        for (int i = 0; i < num_elements; i++)
+        {
+            array_to_sort[i] = rand() % 1000;
+        }
+
+        for (int i = 0; i < num_elements; i++)
+        {
+            printf("%d ",array_to_sort[i]);
+        }
+        printf("\n");
+
         int n[16] = { 11,85,21,31,41,51,61,71,81,91,101,111,121,131,141,151 };
-        
         size = (sizeof(n)/sizeof(int))/num_tasks;
-   
         MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Scatter(n, size, MPI_INT, &initial_recv_data, size, MPI_INT, 0, MPI_COMM_WORLD);
     }
@@ -112,7 +133,6 @@ int main(int argc, char* argv[])
     {
         int n;
         MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	printf("size recv :%d\n",size);
         MPI_Scatter(&n, 0, MPI_INT, &initial_recv_data, size, MPI_INT, 0, MPI_COMM_WORLD);
 
     }
@@ -121,18 +141,10 @@ int main(int argc, char* argv[])
     /* END initial scattering*/
      temp = (int*)malloc(sizeof(int)*size);
      for (int i = 0; i < size; i++)
-     
-	{
-	printf("%d added %d\n",global_id,initial_recv_data[i]);
+	 {
          temp[i] = initial_recv_data[i];
      }
     active_data = temp;
-	printf("initial scattering for %d \t ", global_id);
-  	for (int i = 0; i < get_size(active_data);i++)
-	{
-		printf("%d ", active_data[i]);
-	} 
-	printf("\n");
     /*
         figure out binary
         rank 0 bcast pivot
@@ -181,7 +193,6 @@ int main(int argc, char* argv[])
                 MPI_Bcast(&pivot, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
             }
-            printf("pivot data is: %d", pivot);
 
         }
         else if (d == 1)
@@ -359,14 +370,7 @@ int main(int argc, char* argv[])
 
 
         
-        /*printf("arr = ");
 
-        for (int i = 0; i < get_size(working_arr); i++)
-        {
-            printf("%d\t", working_arr[i]);
-        }
-        printf("\n");
-	*/
         /*
             separate array into lower end and higher end
             if smaller than pivot, 
@@ -382,10 +386,6 @@ int main(int argc, char* argv[])
 
         for (int i = 0; i < temp_size; i++)
         {
-            //if (d == 2)
-            //{
-            //    printf("\t\t\t%d ? %d\n", working_arr[i], pivot);
-            //}
 
             if (working_arr[i] < pivot)
             {
@@ -405,10 +405,7 @@ int main(int argc, char* argv[])
  
 
         /* keep lower if child_id == 0*/
-        /*if (d == 2)
-        {
-            printf("\n\t\tglobal id: %d, child id: %d\n", global_id, child_id);
-        }*/
+ 
         if (child_id == 0)
         {
             active_data = lower;
@@ -419,16 +416,7 @@ int main(int argc, char* argv[])
         }
         
 
-        
-
-        printf("Global id: %d [%d] active arr:\t{",global_id, d);
-
-        for (int i = 0; i < get_size(active_data); i++)
-        {
-            printf("%d, \t", active_data[i]);
-        }
-        printf("}\n\n\n");
-
+      
         
 
 
@@ -466,31 +454,12 @@ int main(int argc, char* argv[])
         
         MPI_Gatherv(arr_to_send, active_size, MPI_INT, &recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
-        printf("\n \nGlobal id: %d Received counts: ",global_id);
-        for (int i = 0; i < 8; i++) {
-            printf("%d, ", recvcounts[i]);
-        }
-        printf("\n");
-	/*
-        printf("\n \nReceived displs: ");
-        for (int i = 0; i < 8; i++) {
-            printf("%d, ", displs[i]);
-        }
-        printf("\n");
-        */
-        printf("\n \nGlobal id: %d has Received data: ", global_id);
-        for (int i = 0; i < 16; i++) {
-            printf("%d, ", recv_n[i]);
-        }
-        printf("\n");
-
 
     }
     else {
         int active_size = get_size(active_data);
         MPI_Gather(&active_size, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
 
-	printf("%d val[0] %d\n",global_id, &active_data[0]);
 	int* arr_to_send=(int*)malloc(sizeof(int)*active_size);
 	for (int i =0;i < get_size(active_data); i++)
 	{
@@ -499,28 +468,19 @@ int main(int argc, char* argv[])
         MPI_Gatherv(arr_to_send, active_size, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
     }
-	printf("data that was supposed to be sent by: %d = ",global_id);
 
 	if(global_id == 0)
 	{
 		printf("\nsorting\n");
-		/*
- 		int*  arr_to_send2=(int*)malloc(sizeof(int)*get_size(active_data));
-		for (int i =0;i < 16; i++)
-		{
-			arr_to_send2[i] = active_data[i];
-	
-		}
-		*/
 		qusort(recv_n,0,15);	
-
+        for (int i = 0; i < 16; i++)
+        {
+            int data = recv_n[i];
+            printf("%d, ", data);
+        }
+        printf("\n");
 	}
-    for(int i =0; i < 16; i++)
-	{
-	int data = recv_n[i];
-	printf("%d, ", data);
-	}
-	printf("\n");
+  
 
     MPI_Finalize();
     return 0;
