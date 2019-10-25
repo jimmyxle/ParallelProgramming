@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
     int num_tasks, global_id, task_id,child_id, size, degree, pivot, color_degree_1, num_elements =0;
     int *recv_buf, recv_data[10], upper[10], lower[10], recv_n[16], recvcounts[8], displs[8];
     int* active_data, *array_to_sort, mask, bcast_mask, color, bcast_color;
-    int *temp;
+    int *temp, count_element, *data;
     int lower_count, upper_count;
     time_t t;
 
@@ -154,102 +154,147 @@ int main(int argc, char* argv[])
     char* binary_str=to_binary(task_id,3);
     printf("P%d:%s", task_id,binary_str);
 
+    num_elements = size;
 
     bcast_mask = ((int)pow(2, degree) - 1);
 
     for (int i = degree-1; i >= 0; i--)
     {
+        /* split world to bcast */
         bcast_color = ~bcast_mask & task_id;
         bcast_mask = bcast_mask ^ (int)(pow(2, i));
-
-
         MPI_Comm_split(MPI_COMM_WORLD, bcast_color, task_id, &childcomm);
         MPI_Comm_rank(childcomm, &child_id);
 
         if (child_id == 0)
         {
-            //bcast pivot
             pivot = recv_buf[size/2];
             MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm);
+        }
+        else
+        {
+            MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm);
+        }
+
+        /* split world to send arrays, 2 per comm */
+        mask = ((int)pow(2, degree) - 1) ^(int)(pow(2,i));
+        color = mask & task_id;
+        MPI_Comm_split(MPI_COMM_WORLD, color, task_id, &childcomm);
+        MPI_Comm_rank(childcomm, &child_id);
+
+        size_t arr_size_to_send, arr_size_recv;
+        if (child_id == 0)
+        {
+            arr_size_to_send = num_elements;
+            MPI_Send(&arr_size_to_send, 1, MPI_INT, 1, 0, childcomm);
+
+            for (int a = 0; a < arr_size_to_send; a++)
+            {
+                MPI_Send(&active_data[a], 1, MPI_INT, 1, 0, childcomm);
+
+            }
+
+
+            arr_size_recv = 0;
+            MPI_Recv(&arr_size_recv, 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+            data = malloc(sizeof(int) * arr_size_recv);
+
+            for (int a = 0; a < arr_size_recv; a++)
+            {
+                MPI_Recv(&data[a], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
+            }
+
 
         }
         else
         {
+            arr_size_recv = 0;
+            MPI_Recv(&arr_size_recv, 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
+            data = malloc(sizeof(int)*arr_size_recv);
+            for (int a = 0; a < arr_size_recv; a++)
+            {
+                MPI_Recv(&data[a], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
+            }
 
-            MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm);
 
+            arr_size_to_send = num_elements;
+            MPI_Send(&arr_size_to_send, 1, MPI_INT, 0, 0, childcomm);
+
+            for (int a = 0; a < arr_size_to_send; a++)
+            {
+                MPI_Send(&active_data[a], 1, MPI_INT, 0, 0, childcomm);
+            }
         }
-
-        /*mask = ((int)pow(2, degree) - 1) ^(int)(pow(2,i));
-        color = mask & task_id;
-        MPI_Comm_split(MPI_COMM_WORLD, color, task_id, &childcomm);
-        MPI_Comm_rank(childcomm, &child_id);*/
-
-       // printf("\t%d\tc_id: %d\t\n",color,child_id);
-        
-
-
-    }
-
-
-    MPI_Finalize();
-    exit(0);
-
-
-
-
-
-
-
-    /* gather all the results and do serial quicksort on it*/
-    if (global_id == 0) {
-        /* int MPI_Gatherv(
-        const void *sendbuf, 
-        int sendcount, 
-        MPI_Datatype sendtype,
-        void *recvbuf, 
-        const int *recvcounts, 
-        const int *displs,
-        MPI_Datatype recvtype, 
-        int root,
-        MPI_Comm comm) */
-
-        /* get counts */
-        int active_size = get_size(active_data);
-
-        MPI_Gather(&active_size, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-        int total = 0;
-        for (int r = 0; r < 8; r++)
+        int size_working_arr = arr_size_recv + arr_size_to_send;
+        int* working_arr = malloc(sizeof(int)*size_working_arr);
+        //num_elements important
+        for (int i = 0; i < arr_size_recv; i++)
         {
-            total = r*recvcounts[r];
-            displs[r] = total;    
+            working_arr[i] = data[i];
         }
+        int start = 0;
+        for (int i = arr_size_recv; i < size_working_arr; i++)
+        {
+            working_arr[i] = active_data[start];
+            start++;
+        }
+        printf("||");
+        //split into two array according to pivot
+        int* lower = malloc(sizeof(int) * size_working_arr);
+        int* upper = malloc(sizeof(int) * size_working_arr);
+        lower_count = 0;
+        upper_count = 0;
+        if (child_id == 0)
+        {
+            for (int i = 0; i < size_working_arr; i++)
+            {
+                if (pivot > working_arr[i])
+                {
+                    lower[lower_count] = working_arr[i];
+                    lower_count++;
+                }
+            }
+            /* get the number in the array you keep and track the size */
+            num_elements = lower_count;
+            active_data = lower;
 
-	int* arr_to_send=(int*)malloc(sizeof(int)*active_size);
-	for (int i =0;i < active_size; i++)
-	{
-		arr_to_send[i] = active_data[i];
-	}
-        
-        MPI_Gatherv(arr_to_send, active_size, MPI_INT, &recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
-
+        }
+        else
+        {
+            for (int i = 0; i < size_working_arr; i++)
+            {
+                if (pivot <= working_arr[i])
+                {
+                    upper[upper_count] = working_arr[i];
+                    upper_count++;
+                }
+            }
+            num_elements = upper_count;
+            active_data = upper;
+        }
+        if (i == 0)
+        {
+            printf(" [%d]", pivot);
+            for (int i = 0; i < num_elements; i++)
+            {
+                printf("\t%d ", active_data[i]);
+            }
+        }
+       
 
     }
-    else {
-        int active_size = get_size(active_data);
-        MPI_Gather(&active_size, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
 
-	int* arr_to_send=(int*)malloc(sizeof(int)*active_size);
-	for (int i =0;i < get_size(active_data); i++)
-	{
-		arr_to_send[i] = active_data[i];
-	}
-        MPI_Gatherv(arr_to_send, active_size, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
 
-    }
 
-	if(global_id == 0)
+
+
+
+
+
+
+
+
+	if(task_id == 0)
 	{
 		printf("\nsorting\n");
 		qusort(recv_n,0,15);	

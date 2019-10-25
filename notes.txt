@@ -306,3 +306,54 @@
 
 
     }
+    3
+
+        /* gather all the results and do serial quicksort on it*/
+    if (task_id == 0) 
+    {
+        /* int MPI_Gatherv(
+        const void *sendbuf, 
+        int sendcount, 
+        MPI_Datatype sendtype,
+        void *recvbuf, 
+        const int *recvcounts, 
+        const int *displs,
+        MPI_Datatype recvtype, 
+        int root,
+        MPI_Comm comm) */
+
+        /* get counts */
+        int active_size = num_elements;
+
+        MPI_Gather(&active_size, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        int total = 0;
+        for (int r = 0; r < num_tasks; r++)
+        {
+            total = r*recvcounts[r];
+            displs[r] = total;    
+        }
+
+	    int* arr_to_send=(int*)malloc(sizeof(int)*active_size);
+	    for (int i =0;i < active_size; i++)
+	    {
+		    arr_to_send[i] = active_data[i];
+	    }
+        
+        MPI_Gatherv(arr_to_send, active_size, MPI_INT, &recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
+
+
+    }
+    else 
+    {
+        int active_size = get_size(active_data);
+        MPI_Gather(&active_size, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+
+	    int* arr_to_send=(int*)malloc(sizeof(int)*active_size);
+	    for (int i =0;i < get_size(active_data); i++)
+	    {
+		    arr_to_send[i] = active_data[i];
+	    }
+        MPI_Gatherv(arr_to_send, active_size, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
+
+    }
