@@ -1,4 +1,4 @@
-/* jimmy */
+/* Jimmy Le 26546986 */
 #include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -85,7 +85,7 @@ int get_size(int arr[])
 
 int main(int argc, char* argv[])
 {
-    int num_tasks, task_id, child_id, size, degree, pivot, num_elements =0;
+    int num_tasks, task_id, child_id, size, degree, pivot, num_elements = 0;
     int *recv_buf, *temp_array, *recv_n, *recvcounts ;
     int *active_data, *array_to_sort, mask, bcast_mask, color, bcast_color;
     int *temp, *data, *displs;
@@ -116,17 +116,7 @@ int main(int argc, char* argv[])
     {
         array_to_sort = malloc(sizeof(int) * num_elements);
         for (int i = 0; i < num_elements; i++)
-        {
-            //array_to_sort[i] = rand() % 1000;
-            array_to_sort[i] = i+1;
-
-        }
-        /*printf("array to sort\n");
-        for (int i = 0; i < num_elements; i++)
-        {
-            printf("%d ",array_to_sort[i]);
-        }
-        printf("\n");*/
+            array_to_sort[i] = rand() % 1000;
 
         size = num_elements/num_tasks;
         MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -142,26 +132,23 @@ int main(int argc, char* argv[])
 
         MPI_Scatter(NULL, 0, MPI_INT, recv_buf, size, MPI_INT, 0, MPI_COMM_WORLD);
     }
-    // TODO free array_to sort?
 
-    /* END initial scattering*/
 
-    // make a copy of the buffer?
+    // make a copy of the buffer
      temp = (int*)malloc(sizeof(int)*size);
      for (int i = 0; i < size; i++)
 	 {
          temp[i] = recv_buf[i];
      }
     active_data = temp;
-
-
-   // char* binary_str=to_binary(task_id,3);
-   // printf("P%d:%s", task_id,binary_str);
-
+    free(recv_buf);
     num_elements = size;
 
+    /* 
+        To get the processors to share properly, I found a formula from the class book from chapter 4 that uses 
+        masks. I did some playing around to get the mask for the broadcast. 
+    */
     bcast_mask = ((int)pow(2, degree) - 1);
-
     for (int i = degree-1; i >= 0; i--)
     {
         /* split world to bcast */
@@ -176,9 +163,7 @@ int main(int argc, char* argv[])
             MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm);
         }
         else
-        {
             MPI_Bcast(&pivot, 1, MPI_INT, 0, childcomm);
-        }
 
         /* split world to send arrays, 2 per comm */
         mask = ((int)pow(2, degree) - 1) ^(int)(pow(2,i));
@@ -193,22 +178,14 @@ int main(int argc, char* argv[])
             MPI_Send(&arr_size_to_send, 1, MPI_INT, 1, 0, childcomm);
 
             for (unsigned int a = 0; a < arr_size_to_send; a++)
-            {
                 MPI_Send(&active_data[a], 1, MPI_INT, 1, 0, childcomm);
-
-            }
-
 
             arr_size_recv = 0;
             MPI_Recv(&arr_size_recv, 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
             data = malloc(sizeof(int) * arr_size_recv);
 
             for (unsigned int a = 0; a < arr_size_recv; a++)
-            {
                 MPI_Recv(&data[a], 1, MPI_INT, 1, 0, childcomm, MPI_STATUS_IGNORE);
-            }
-
-
         }
         else
         {
@@ -216,19 +193,15 @@ int main(int argc, char* argv[])
             MPI_Recv(&arr_size_recv, 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
             data = malloc(sizeof(int)*arr_size_recv);
             for (unsigned int a = 0; a < arr_size_recv; a++)
-            {
                 MPI_Recv(&data[a], 1, MPI_INT, 0, 0, childcomm, MPI_STATUS_IGNORE);
-            }
-
 
             arr_size_to_send = num_elements;
             MPI_Send(&arr_size_to_send, 1, MPI_INT, 0, 0, childcomm);
 
             for (unsigned int a = 0; a < arr_size_to_send; a++)
-            {
                 MPI_Send(&active_data[a], 1, MPI_INT, 0, 0, childcomm);
-            }
         }
+
         int size_working_arr = arr_size_recv + arr_size_to_send;
         int* working_arr = malloc(sizeof(int)*size_working_arr);
         //num_elements important
@@ -236,6 +209,7 @@ int main(int argc, char* argv[])
         {
             working_arr[i] = data[i];
         }
+        free(data);
         int start = 0;
         for (unsigned int i = arr_size_recv; i < (unsigned int)size_working_arr; i++)
         {
@@ -273,28 +247,17 @@ int main(int argc, char* argv[])
             num_elements = temp_count;
             active_data = temp_array;
         }
-        //if (i == 0)
-        //{
-        //    printf(" [%d]", pivot);
-        //    for (int i = 0; i < num_elements; i++)
-        //    {
-        //        printf("\t%d ", active_data[i]);
-        //    }
-        //}
-       
+        free(working_arr);
+
 
     }
-
     /* gather all the data */
     if (task_id == 0)
     {
         recvcounts = malloc(sizeof(int)*num_tasks);
-        
         displs =     malloc(sizeof(int)*num_tasks);
 
-     
         MPI_Gather(&num_elements, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        //printf("{%d}", num_elements);
 
         int total = 0;
         for (int r = 0; r < num_tasks; r++)
@@ -317,21 +280,13 @@ int main(int argc, char* argv[])
             printf("%d ", data);
         }
         printf("\n");
-
-
+        free(displs);
+        free(recvcounts);
     }
     else
     {
         MPI_Gather(&num_elements, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
-        //printf("{%d}", num_elements);
-
         MPI_Gatherv(active_data, num_elements, MPI_INT, NULL, NULL, NULL, MPI_INT, 0, MPI_COMM_WORLD);
-     /*   for (int i = 0; i < num_elements; i++)
-        {
- 
-            printf("%d, ",active_data[i]);
-        }*/
-
     }
     free(temp);
 
