@@ -2,39 +2,9 @@
 #include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
- #include <stdio.h>
  #include <time.h>
  #include <math.h>
 
- void swap_num(int* low, int* high)
- {
-     int temp = *low;
-     *low = *high;
-     *high = temp;
- }
-
-void qusort(int arr[], int q, int r)
-{
-    int x, s;
-    if (q < r)
-    {
-        x = arr[q];
-        s = q;
-        for (int i = q+1; i <= r; i++)
-        {
-            if(arr[i]<=x)
-            {
-                s = s + 1;
-                swap_num(&arr[s], &arr[i]);
-            }
-        }
-        swap_num(&arr[q], &arr[s]);
-        qusort(arr, q, s);
-        qusort(arr, s+1, r);
-    }
-}
 
 /*
     followed a tutorial on using qsort from the standard library 
@@ -42,49 +12,6 @@ void qusort(int arr[], int q, int r)
 */
 int cmpfunc(const void* a, const void* b) {
     return (*(int*)a - *(int*)b);
-}
-
-
-char* to_binary(int n, int length)
-{
-    /* taken from https://www.programmingsimplified.com/c/source-code/c-program-convert-decimal-to-binary */
-    int c, d, count;
-    char* ptr;
-    int y = length;
-    count = 0;
-    ptr = (char*)malloc(y+1);
-
-    if (ptr == NULL)
-        exit(EXIT_FAILURE);
-    for (c = (y-1); c >= 0; c--)
-    {
-        d = n >> c;
-        if (d&1)
-            *(ptr+count) = 1 + '0';
-        else
-            *(ptr+count) = 0 + '0';
-        count++;
-    }
-    *(ptr+count)='\0';
-    return ptr;
-}
-int get_size(int arr[])
-{
-    int count = 0;
-
-    for (int j = 0; j < 10; j++)
-    {
-
-        if (arr[j] > 0 && arr[j]<1000) /*linux has junk info that is negative or some large number*/
-        { 
-            count++;
-        }
-        else
-        { 
-            return count;
-        }
-    }
-    return count;
 }
 
 int main(int argc, char* argv[])
