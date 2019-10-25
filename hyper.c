@@ -36,6 +36,9 @@ void qusort(int arr[], int q, int r)
     }
 }
 
+int cmpfunc(const void* a, const void* b) {
+    return (*(int*)a - *(int*)b);
+}
 
 
 char* to_binary(int n, int length)
@@ -83,9 +86,9 @@ int get_size(int arr[])
 int main(int argc, char* argv[])
 {
     int num_tasks, global_id, task_id,child_id, size, degree, pivot, color_degree_1, num_elements =0;
-    int *recv_buf, recv_data[10], upper[10], lower[10], recv_n[16], recvcounts[8], displs[8];
+    int *recv_buf, recv_data[10], *upper, *lower, *recv_n, *recvcounts ;
     int* active_data, *array_to_sort, mask, bcast_mask, color, bcast_color;
-    int *temp, count_element, *data;
+    int *temp, count_element, *data, *displs;
     int lower_count, upper_count;
     time_t t;
 
@@ -272,40 +275,89 @@ int main(int argc, char* argv[])
             num_elements = upper_count;
             active_data = upper;
         }
-        if (i == 0)
-        {
-            printf(" [%d]", pivot);
-            for (int i = 0; i < num_elements; i++)
-            {
-                printf("\t%d ", active_data[i]);
-            }
-        }
+        //if (i == 0)
+        //{
+        //    printf(" [%d]", pivot);
+        //    for (int i = 0; i < num_elements; i++)
+        //    {
+        //        printf("\t%d ", active_data[i]);
+        //    }
+        //}
        
 
     }
 
+    /* gather all the data */
+    if (task_id == 0)
+    {
+        recvcounts = malloc(sizeof(int)*num_tasks);
+        
+        displs =     malloc(sizeof(int)*num_tasks);
 
+     
+        MPI_Gather(&num_elements, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        printf("{%d}", num_elements);
 
+        int total = 0;
+        for (int r = 0; r < num_tasks; r++)
+        {
+            displs[r] = total;
 
+            total += recvcounts[r];
+        }
 
+        //printf("\n displs \n");
+        ////qusort(recv_n,0,15);	
+        //for (int i = 0; i < 8; i++)
+        //{
+        //   
+        //    printf("%d, ", displs[i]);
+        //}
+        //printf("\n");
 
+        recv_n = malloc(sizeof(int) * atoi(argv[1]) );
+        MPI_Gatherv(active_data, num_elements, MPI_INT, recv_n, recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
+        //for (int i = 0; i < num_elements; i++)
+        //{
+        //    printf("%d, ", active_data[i]);
+        //}
 
-
-
-
-
-	if(task_id == 0)
-	{
-		printf("\nsorting\n");
-		qusort(recv_n,0,15);	
-        for (int i = 0; i < 16; i++)
+        printf("\n unsorted\n");
+        //qusort(recv_n,0,15);	
+        for (int i = 0; i < atoi(argv[1]); i++)
         {
             int data = recv_n[i];
-            printf("%d, ", data);
+            printf("%d ", data);
         }
         printf("\n");
-	}
-  
+
+        qsort(recv_n, atoi(argv[1]), sizeof(int), cmpfunc);
+
+        printf("\n sorted \n");
+        //qusort(recv_n,0,15);	
+        for (int i = 0; i < atoi(argv[1]); i++)
+        {
+            int data = recv_n[i];
+            printf("%d ", data);
+        }
+        printf("\n");
+
+
+    }
+    else
+    {
+        MPI_Gather(&num_elements, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+        printf("{%d}", num_elements);
+
+        MPI_Gatherv(active_data, num_elements, MPI_INT, NULL, NULL, NULL, MPI_INT, 0, MPI_COMM_WORLD);
+        for (int i = 0; i < num_elements; i++)
+        {
+ 
+            printf("%d, ",active_data[i]);
+        }
+
+    }
+
 
     MPI_Finalize();
     return 0;

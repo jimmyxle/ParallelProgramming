@@ -11,7 +11,7 @@
      *low = *high;
      *high = temp;
  }
-
+ /*
 void qsort(int arr[], int q, int r)
 {
     int x, s;
@@ -32,7 +32,7 @@ void qsort(int arr[], int q, int r)
         qsort(arr, s+1, r);
     }
 }
-
+*/
 
 
 int partition(int array[], int low, int high)
