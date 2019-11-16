@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
-#define INF INT_MAX
+#define INF (INT_MAX)
 
 void print_arr(int** arr, int num)
 {
