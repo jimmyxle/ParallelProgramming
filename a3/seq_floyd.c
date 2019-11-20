@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <conio.h>
+
 
 #define INF (INT_MAX)
 
@@ -57,7 +59,7 @@ int** floyd(int** adj, int num)
     for (int i = 0; i < num; i++)
     {
         dist[i] = (int*)malloc(sizeof(int*)*num);
-        memcpy(dist[i], adj[i], sizeof(int) * num * num);
+        memcpy((dist[i]), (adj[i]), sizeof(int) * num);
     }
     for (int k = 0; k < num; k++)
     {
@@ -89,6 +91,7 @@ int main(int argc, char* argv[])
     int** dist = floyd(adj,num_ints);
     printf("\nThe new distances are:\n");
     print_arr(dist, num_ints);
-
+	
+	_getch();
     return 0;
 }
