@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <conio.h>
+//#include <conio.h>
 
 
 #define INF (INT_MAX)
@@ -92,6 +92,6 @@ int main(int argc, char* argv[])
     printf("\nThe new distances are:\n");
     print_arr(dist, num_ints);
 	
-	_getch();
+//	_getch();
     return 0;
 }

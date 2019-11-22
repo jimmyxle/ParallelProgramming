@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <conio.h>
-
+#include "mpi.h"
 
 #define INF (INT_MAX)
 
@@ -122,24 +121,77 @@ int** bcast_floyd(int** adj, int num)
 int main(int argc, char* argv[])
 {
 	//Initialize
-	int num_ints = 4;
+	int num_task, task_id, num_ints = 4, num_elements,scatter_size;
+	int** adj,**dist, *linear_arr, *recv_buf;
 
-	int** adj = init_array(num_ints);
-	//Fill 2d Array
-	adj = fill_array(adj, num_ints);
-	insert_edge(adj, 0, 3, 10);
-	insert_edge(adj, 0, 1, 5);
-	insert_edge(adj, 1, 2, 3);
-	insert_edge(adj, 2, 3, 1);
+	MPI_Init(NULL, NULL);
+	MPI_Comm childcomm;
+	MPI_Comm_size(MPI_COMM_WORLD, &num_task);
+	MPI_Comm_rank(MPI_COMM_WORLD, &task_id);
+	MPI_Status* status;
+	if (argc != 2)
+		printf("not enough args");
+	else
+		num_elements = atoi(argv[1]);
+	
+//	printf("task_id[%d]:\n",task_id);
 
-	print_arr(adj, num_ints);
 
-	int** dist = bcast_floyd(adj, num_ints);
+	if (task_id == 0)
+	{
+		adj = init_array(num_ints);
+		//Fill 2d Array
+		adj = fill_array(adj, num_ints);
+		insert_edge(adj, 0, 3, 10);
+		insert_edge(adj, 0, 1, 5);
+		insert_edge(adj, 1, 2, 3);
+		insert_edge(adj, 2, 3, 1);
+		print_arr(adj, num_ints);
+		//turn 2d array into 1d array
+		linear_arr = (int*)malloc(sizeof(int)*num_task);
+		for (int i = 0; i < num_ints; i++)
+		{
+			for(int j = 0; j < num_ints; j++)
+			{
+				linear_arr[num_ints*i+j] = adj[i][j];
+			}
+			 
+		}
+		//use linear_arr for scatterv
+
+		scatter_size = 1;
+		MPI_Send(&scatter_size, 1, MPI_INT, 1, 0, childcomm);		
+		//MPI_Scatter(linear_arr, scatter_size, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+		printf("%d scattered data\n", task_id);			
+	}
+	else if (task_id == 1)
+	{
+			
+		printf("%d receiving... \t",task_id);
+		scatter_size = 1;
+		recv_buf = malloc(sizeof(int)*scatter_size);
+		MPI_Recv(&recv_buf, 1, MPI_INT, 0, 0, childcomm, status);
+		//MPI_Scatter(NULL, 0, MPI_INT, recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
+		printf("%d\t\n", recv_buf[0]);
+	}
+	else
+	{
+		printf("[%d]\tnothing\n", task_id);
+		
+	}
+	/*
+	if (task_id == 0)
+	{
 
 
-	printf("\nThe new distances are:\n");
-	print_arr(dist, num_ints);
+		dist = bcast_floyd(adj, num_ints);
 
-	_getch();
+
+		printf("\nThe new distances are:\n");
+		print_arr(dist, num_ints);
+
+	}*/
+	MPI_Barrier(childcomm);
+	MPI_Finalize();
 	return 0;
 }
