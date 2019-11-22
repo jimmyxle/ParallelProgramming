@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
 	
 //	printf("task_id[%d]:\n",task_id);
 
-
+	int num;
 	if (task_id == 0)
 	{
 		adj = init_array(num_ints);
@@ -157,27 +157,23 @@ int main(int argc, char* argv[])
 			}
 			 
 		}
-		//use linear_arr for scatterv
-
+		//use linear_arr for scatter
 		scatter_size = 1;
-		MPI_Send(&scatter_size, 1, MPI_INT, 1, 0, childcomm);		
-		//MPI_Scatter(linear_arr, scatter_size, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+		//MPI_Send(&num, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		recv_buf = malloc(sizeof(int)*scatter_size);		
+		MPI_Scatter(&linear_arr, scatter_size, MPI_INT, recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
 		printf("%d scattered data\n", task_id);			
 	}
-	else if (task_id == 1)
+	else
 	{
 			
 		printf("%d receiving... \t",task_id);
 		scatter_size = 1;
 		recv_buf = malloc(sizeof(int)*scatter_size);
-		MPI_Recv(&recv_buf, 1, MPI_INT, 0, 0, childcomm, status);
-		//MPI_Scatter(NULL, 0, MPI_INT, recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
-		printf("%d\t\n", recv_buf[0]);
-	}
-	else
-	{
-		printf("[%d]\tnothing\n", task_id);
-		
+		//MPI_Recv(&num, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Scatter(&linear_arr, scatter_size, MPI_INT, recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
+		int data = recv_buf[0];	
+		printf("%d\t\n", data);
 	}
 	/*
 	if (task_id == 0)
@@ -191,7 +187,7 @@ int main(int argc, char* argv[])
 		print_arr(dist, num_ints);
 
 	}*/
-	MPI_Barrier(childcomm);
+	
 	MPI_Finalize();
 	return 0;
 }
