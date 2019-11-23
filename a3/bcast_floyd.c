@@ -137,6 +137,12 @@ int main(int argc, char* argv[])
 //	printf("task_id[%d]:\n",task_id);
 
 	int num;
+    linear_arr = (int*)malloc(sizeof(int) * num_task);
+    //use linear_arr for scatter
+    scatter_size = 1;
+    recv_buf = (int*)malloc(sizeof(int) * scatter_size);
+
+
 	if (task_id == 0)
 	{
 		adj = init_array(num_ints);
@@ -148,7 +154,7 @@ int main(int argc, char* argv[])
 		insert_edge(adj, 2, 3, 1);
 		print_arr(adj, num_ints);
 		//turn 2d array into 1d array
-		linear_arr = (int*)malloc(sizeof(int)*num_task);
+
 		for (int i = 0; i < num_ints; i++)
 		{
 			for(int j = 0; j < num_ints; j++)
@@ -157,24 +163,24 @@ int main(int argc, char* argv[])
 			}
 			 
 		}
-		//use linear_arr for scatter
-		scatter_size = 1;
-		//MPI_Send(&num, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-		recv_buf = malloc(sizeof(int)*scatter_size);		
-		MPI_Scatter(&linear_arr, scatter_size, MPI_INT, recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
-		printf("%d scattered data\n", task_id);			
+        for (int i = 0; i < num_ints*num_ints; i++)
+        {
+            printf("[%d]%d\t(%d)\t ", i,linear_arr[i], sizeof(linear_arr[i]));
+        }
+        printf("\n");
 	}
-	else
-	{
-			
-		printf("%d receiving... \t",task_id);
-		scatter_size = 1;
-		recv_buf = malloc(sizeof(int)*scatter_size);
-		//MPI_Recv(&num, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		MPI_Scatter(&linear_arr, scatter_size, MPI_INT, recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
-		int data = recv_buf[0];	
-		printf("%d\t\n", data);
-	}
+    MPI_Scatter(linear_arr, scatter_size, MPI_INT, &recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
+
+        
+
+   
+    
+    printf("%d receiving... \t", task_id);
+    int data = recv_buf;
+
+    printf("%d\t\n", data);
+    
+
 	/*
 	if (task_id == 0)
 	{
