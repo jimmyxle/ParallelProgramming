@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
         else
         {
             MPI_Bcast(&recv_buf, 1, MPI_INT, k, colcomm);
-            d_i_k = (int)recv_buf;
+            d_i_k = recv_buf;
         }
         /*
             if k == i, you share the data with the row
@@ -155,15 +155,14 @@ int main(int argc, char* argv[])
         else
         {
             MPI_Bcast(&recv_buf, 1, MPI_INT, k, rowcomm);
-            d_k_j = (int)recv_buf;
+            d_k_j = recv_buf;
         }
         /*
             check if the val or d_i_k + d_j_k is the minimum
         */
-        if (d_i_k < INT_MAX && d_k_j < INT_MAX && ((int)value > (d_i_k + d_k_j)) )
+        if (d_i_k < INT_MAX && d_k_j < INT_MAX && (value > (d_i_k + d_k_j)) )
         {
-                int val = (d_i_k + d_k_j);
-                value = &val;
+                value = (d_i_k + d_k_j);
         }
         k++;
     }  
