@@ -50,72 +50,29 @@ int** fill_array(int** adj, int num)
 		insert_node(adj, i);
 	return adj;
 }
-int** bcast_floyd(int num_nodes, int num_proc, int task_id)
-{
-    
-	
-
-
-
-	/*
-	SYNC
-
-	k == 1
-	if i == 0 and j == k, share with all in same column. Where i == 0
-	if i == 1 and j == k, share with all in same column. Where i == 1
-	if i == 2 and j == k, share with all in same column. Where i == 2
-
-	if you are i,k SHARE
-
-	if i == k, j == 0, share with all in the same row, where j == 0
-	if i == k, j == 1, share with all in the same row, where j == 1
-	if i == k, j == 2, share with all in the same row, where j == 2
-	
-	if you are k,j SHARE
-	
-	Do computation
-
-	SYNC 
-
-	k == 2
-
-	if j == k, share with everyone with i == 0 (max 2 times)
-	if j == k, share with everyone with i == 1
-	if j == k, share with everyone with i == 2
-
-	if i == k, share with all with j == 0
-	if i == k, share with all with j == 1
-	if i == k, share with all with j == 2
-
-	Do computation
-
-	when done do gatherv by rank of processor
-
-
-
-	notes:
-	everyone does their own calculation 
-	SOME send twice
-	everyone recv 2
-
-	*/
-
-
-	return NULL;
-}
 
 int main(int argc, char* argv[])
 {
-	//Initialize
+	//Declare all variables 
 	int num_task, task_id, num_nodes = 4, num_elements,scatter_size, *value, row_id, col_id;
-	int** adj,**dist, *linear_arr, *recv_buf;
+	int** adj, *linear_arr, *recv_buf;
+    int d_i_k, d_k_j, i, j, k;
+    MPI_Comm colcomm, rowcomm;
 
+    //Initialize MPI
 	MPI_Init(NULL, NULL);
-	MPI_Comm colcomm, rowcomm;
 	MPI_Comm_size(MPI_COMM_WORLD, &num_task);
 	MPI_Comm_rank(MPI_COMM_WORLD, &task_id);
-    int i = task_id % num_nodes;
-    int j = task_id / num_nodes;
+
+    /*
+        I figured out that for d_ij, i and k can be calculated as: 
+        i = rank proc % number of nodes ie: 15/4 = 3 
+        j = rank proc / number of nodes ie: 15%4 = 3 
+
+        Split the world into columns and rows
+    */
+    i = task_id % num_nodes;
+    j = task_id / num_nodes;
     MPI_Comm_split(MPI_COMM_WORLD, i, task_id, &colcomm);
     MPI_Comm_rank(colcomm, &col_id);
 
@@ -129,140 +86,100 @@ int main(int argc, char* argv[])
 	else
 		num_elements = atoi(argv[1]);
 	
-//	printf("task_id[%d]:\n",task_id);
+    //Scatter size is how many elements each processor holds
+    scatter_size = 1;
 
     linear_arr = (int*)malloc(sizeof(int) * num_task);
-    //use linear_arr for scatter
-    scatter_size = 1;
     recv_buf = (int*)malloc(sizeof(int) * scatter_size);
     value = (int*)malloc(sizeof(int) * scatter_size);
 
 
+
 	if (task_id == 0)
 	{
+        //Initialize the matrix
 		adj = init_array(num_nodes);
-		//Fill 2d Array
 		adj = fill_array(adj, num_nodes);
 		insert_edge(adj, 0, 3, 10);
 		insert_edge(adj, 0, 1, 5);
 		insert_edge(adj, 1, 2, 3);
 		insert_edge(adj, 2, 3, 1);
 		print_arr(adj, num_nodes);
-		//turn 2d array into 1d array
 
+        //Needed the 2d array as a 1d array
 		for (int s = 0; s < num_nodes; s++)
 		{
 			for(int t = 0; t < num_nodes; t++)
 			{
-				//linear_arr[num_nodes*s+t] = adj[s][t];
-				linear_arr[num_nodes*s+t] = num_nodes * s + t;
+				linear_arr[num_nodes*s+t] = adj[s][t];
 			}
-			 
 		}
-        /*for (int i = 0; i < num_nodes*num_nodes; i++)
-        {
-            printf("[%d]%d\t(%d)\t ", i,linear_arr[i], sizeof(linear_arr[i]));
-        }*/
         printf("\n");
 	}
+    //Each processor has one element, value
     MPI_Scatter(linear_arr, scatter_size, MPI_INT, &recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
     value = recv_buf;
-
-    printf("%d has... \t", task_id);
-    printf("%d\t\n", value);
-
-    /*
-    each process has their own number
-    so scatter by rank of processor
-    */
-    int k = 0;
-    //int i = rank proc / number of nodes ie: 15/4 = 3 
-    //int j = rank proc % number of nodes ie: 15%4 = 3 
-    int* d_i_k = INT_MAX, d_k_j = INT_MAX;
-
-    while (k < 2)
+    
+    k = 1;
+    while (k < num_nodes)
     {
-        if (k == 0)
-        {
-            //value is k
-            //start k at 1 instead
-            //printf("[%d] HAS %d when k == 0\n", task_id, value);
+        /*
+            both d_i_k and d_k_j are used for the djikstra calculation 
+            to get the minimum cost
+        */
+        d_i_k = INT_MAX;
+        d_k_j = INT_MAX;
 
+        //MPI_Barrier(MPI_COMM_WORLD);
+        /*
+            if k == j, then you share your data with the column
+        */
+        if ( k == j )
+        {
+            recv_buf = value;
+            MPI_Bcast(&recv_buf, 1, MPI_INT, k, colcomm);
         }
         else
         {
-            MPI_Barrier(MPI_COMM_WORLD);
-            if ( k == j )
-            {
-                int val = value;
-                //printf("[%d] shared %d with the column\n", task_id, val);
-                recv_buf = value;
-                /*MPI_Bcast(&recv_buf, 1, MPI_INT, k, colcomm);
-                printf("[%d] recv %d \n", task_id, val);*/
-
-            }
-            else
-            {
-                //printf("d_i_k before: %d\n", d_i_k);
-                MPI_Bcast(&recv_buf, 1, MPI_INT, k, colcomm);
-                d_i_k = recv_buf;
-                int val = value;
-         /*       printf("[%d] has val %d and ", task_id, val);
-                printf("d_i_k after: %d\n", d_i_k);*/
-
-            }
-
-            //if (k == j)
-            //{
-            //    MPI_Bcast(value, 1, MPI_INT, num_elements * k, colcomm);
-
-            //}
-            //else
-            //{
-            //    MPI_Bcast(d_k_j, 1, MPI_INT, num_elements * k, colcomm);
-
-            //}
-            int min = INT_MAX;
-            if (d_i_k < INT_MAX && d_k_j < INT_MAX)
-            {
-                if (value < (d_i_k + d_k_j))
-                {
-                    min = value;
-
-                }
-                else
-                {
-                    min = (d_i_k + d_k_j);
-                }
-            }
-            else
-            {
-                min = value;
-            }
-
- 
-            printf("[%d] min is %d", task_id, min);
-
-            value = min;
+            MPI_Bcast(&recv_buf, 1, MPI_INT, k, colcomm);
+            d_i_k = recv_buf;
         }
-
-        
+        /*
+            if k == i, you share the data with the row
+        */
+        if (k == i)
+        {
+            recv_buf = value;
+            MPI_Bcast(&recv_buf, 1, MPI_INT, k, rowcomm);
+        }
+        else
+        {
+            MPI_Bcast(&recv_buf, 1, MPI_INT, k, rowcomm);
+            d_k_j = recv_buf;
+        }
+        /*
+            check if the val or d_i_k + d_j_k is the minimum
+        */
+        if (d_i_k < INT_MAX && d_k_j < INT_MAX && (value > (d_i_k + d_k_j)) )
+        {
+                value = (d_i_k + d_k_j);
+        }
         k++;
+    }  
 
+    MPI_Gather(&value, 1, MPI_INT, linear_arr, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (task_id == 0)
+    {    
+        for (int i = 0; i < num_task; i++)
+        {
+            if (i % 4 == 0)
+                printf("\n");
+            if (linear_arr[i] == INT_MAX)
+                printf("INF\t" );
+            else
+                printf("%d \t", linear_arr[i]);
+        }
     }
-	/*
-	if (task_id == 0)
-	{
-
-
-		dist = bcast_floyd(adj, num_ints);
-
-
-		printf("\nThe new distances are:\n");
-		print_arr(dist, num_ints);
-
-	}*/
-	
 	MPI_Finalize();
 	return 0;
 }
