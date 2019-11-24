@@ -50,28 +50,14 @@ int** fill_array(int** adj, int num)
 		insert_node(adj, i);
 	return adj;
 }
-int** bcast_floyd(int** adj, int num)
+int** bcast_floyd(int num_nodes, int num_proc, int task_id)
 {
-
-	/*
-	each process has their own number 
-	so scatter by rank of processor
-
+    
 	
-	*/
-	int k = 0;
-	//int i = rank proc / number of nodes ie: 15/4 = 3 
-	//int j = rank proc % number of nodes ie: 15%4 = 3 
-	// processor 15 is at 3,3
-	//while k < num -1
+
 
 
 	/*
-
-
-	for n = 3, 9 processes 0 <= k <= 2
-	k == 0, everyone does their own 
-
 	SYNC
 
 	k == 1
@@ -115,20 +101,29 @@ int** bcast_floyd(int** adj, int num)
 	*/
 
 
-	return adj;
+	return NULL;
 }
 
 int main(int argc, char* argv[])
 {
 	//Initialize
-	int num_task, task_id, num_ints = 4, num_elements,scatter_size;
+	int num_task, task_id, num_nodes = 4, num_elements,scatter_size, *value, row_id, col_id;
 	int** adj,**dist, *linear_arr, *recv_buf;
 
 	MPI_Init(NULL, NULL);
-	MPI_Comm childcomm;
+	MPI_Comm colcomm, rowcomm;
 	MPI_Comm_size(MPI_COMM_WORLD, &num_task);
 	MPI_Comm_rank(MPI_COMM_WORLD, &task_id);
-	MPI_Status* status;
+    int i = task_id % num_nodes;
+    int j = task_id / num_nodes;
+    MPI_Comm_split(MPI_COMM_WORLD, i, task_id, &colcomm);
+    MPI_Comm_rank(colcomm, &col_id);
+
+    MPI_Comm_split(MPI_COMM_WORLD, j, task_id, &rowcomm);
+    MPI_Comm_rank(rowcomm, &row_id);
+
+
+
 	if (argc != 2)
 		printf("not enough args");
 	else
@@ -136,51 +131,125 @@ int main(int argc, char* argv[])
 	
 //	printf("task_id[%d]:\n",task_id);
 
-	int num;
     linear_arr = (int*)malloc(sizeof(int) * num_task);
     //use linear_arr for scatter
     scatter_size = 1;
     recv_buf = (int*)malloc(sizeof(int) * scatter_size);
+    value = (int*)malloc(sizeof(int) * scatter_size);
 
 
 	if (task_id == 0)
 	{
-		adj = init_array(num_ints);
+		adj = init_array(num_nodes);
 		//Fill 2d Array
-		adj = fill_array(adj, num_ints);
+		adj = fill_array(adj, num_nodes);
 		insert_edge(adj, 0, 3, 10);
 		insert_edge(adj, 0, 1, 5);
 		insert_edge(adj, 1, 2, 3);
 		insert_edge(adj, 2, 3, 1);
-		print_arr(adj, num_ints);
+		print_arr(adj, num_nodes);
 		//turn 2d array into 1d array
 
-		for (int i = 0; i < num_ints; i++)
+		for (int s = 0; s < num_nodes; s++)
 		{
-			for(int j = 0; j < num_ints; j++)
+			for(int t = 0; t < num_nodes; t++)
 			{
-				linear_arr[num_ints*i+j] = adj[i][j];
+				//linear_arr[num_nodes*s+t] = adj[s][t];
+				linear_arr[num_nodes*s+t] = num_nodes * s + t;
 			}
 			 
 		}
-        for (int i = 0; i < num_ints*num_ints; i++)
+        /*for (int i = 0; i < num_nodes*num_nodes; i++)
         {
             printf("[%d]%d\t(%d)\t ", i,linear_arr[i], sizeof(linear_arr[i]));
-        }
+        }*/
         printf("\n");
 	}
     MPI_Scatter(linear_arr, scatter_size, MPI_INT, &recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
+    value = recv_buf;
+
+    printf("%d has... \t", task_id);
+    printf("%d\t\n", value);
+
+    /*
+    each process has their own number
+    so scatter by rank of processor
+    */
+    int k = 0;
+    //int i = rank proc / number of nodes ie: 15/4 = 3 
+    //int j = rank proc % number of nodes ie: 15%4 = 3 
+    int* d_i_k = INT_MAX, d_k_j = INT_MAX;
+
+    while (k < 2)
+    {
+        if (k == 0)
+        {
+            //value is k
+            //start k at 1 instead
+            //printf("[%d] HAS %d when k == 0\n", task_id, value);
+
+        }
+        else
+        {
+            MPI_Barrier(MPI_COMM_WORLD);
+            if ( k == j )
+            {
+                int val = value;
+                //printf("[%d] shared %d with the column\n", task_id, val);
+                recv_buf = value;
+                /*MPI_Bcast(&recv_buf, 1, MPI_INT, k, colcomm);
+                printf("[%d] recv %d \n", task_id, val);*/
+
+            }
+            else
+            {
+                //printf("d_i_k before: %d\n", d_i_k);
+                MPI_Bcast(&recv_buf, 1, MPI_INT, k, colcomm);
+                d_i_k = recv_buf;
+                int val = value;
+         /*       printf("[%d] has val %d and ", task_id, val);
+                printf("d_i_k after: %d\n", d_i_k);*/
+
+            }
+
+            //if (k == j)
+            //{
+            //    MPI_Bcast(value, 1, MPI_INT, num_elements * k, colcomm);
+
+            //}
+            //else
+            //{
+            //    MPI_Bcast(d_k_j, 1, MPI_INT, num_elements * k, colcomm);
+
+            //}
+            int min = INT_MAX;
+            if (d_i_k < INT_MAX && d_k_j < INT_MAX)
+            {
+                if (value < (d_i_k + d_k_j))
+                {
+                    min = value;
+
+                }
+                else
+                {
+                    min = (d_i_k + d_k_j);
+                }
+            }
+            else
+            {
+                min = value;
+            }
+
+ 
+            printf("[%d] min is %d", task_id, min);
+
+            value = min;
+        }
 
         
+        k++;
 
-   
-    
-    printf("%d receiving... \t", task_id);
-    int data = recv_buf;
-
-    printf("%d\t\n", data);
-    
-
+    }
 	/*
 	if (task_id == 0)
 	{
