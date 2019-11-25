@@ -68,7 +68,7 @@ int** fill_array(int** adj, int num)
     insert_edge(adj, 3, 8, 1);
     insert_edge(adj, 3, 9, 3);
     insert_edge(adj, 3, 10, 1);
-
+    
     insert_edge(adj, 4, 3, 7);
     insert_edge(adj, 4, 10, 2);
 
@@ -116,7 +116,7 @@ int** fill_array(int** adj, int num)
     insert_edge(adj, 17, 19, 1);
 
     insert_edge(adj, 18, 19, 4);
-
+    
 	return adj;
 }
 
@@ -260,7 +260,7 @@ int main(int argc, char* argv[])
         printf("\n");
 
         double elapsed = ((double)(end - start));
-        printf("Duration: %0.f s\n", elapsed / CLOCKS_PER_SEC);
+        printf("Duration: %0.f ms\n", elapsed / (CLOCKS_PER_SEC/1000.0));
     }
 
 

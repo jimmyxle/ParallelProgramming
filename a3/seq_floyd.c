@@ -53,7 +53,7 @@ int** fill_array(int** adj, int num)
     insert_edge(adj, 0, 2, 4);
     insert_edge(adj, 0, 3, 5);
     insert_edge(adj, 0, 5, 6);
-
+    
     insert_edge(adj, 1, 2, 4);
     insert_edge(adj, 1, 5, 5);
     insert_edge(adj, 1, 6, 2);
@@ -66,7 +66,7 @@ int** fill_array(int** adj, int num)
     insert_edge(adj, 3, 8, 1);
     insert_edge(adj, 3, 9, 3);
     insert_edge(adj, 3, 10, 1);
-
+    
     insert_edge(adj, 4, 3, 7);
     insert_edge(adj, 4, 10, 2);
 
@@ -114,7 +114,7 @@ int** fill_array(int** adj, int num)
     insert_edge(adj, 17, 19, 1);
 
     insert_edge(adj, 18, 19, 4);
-
+    
     return adj;
 }
 
@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
     //Fill 2d Array
     adj = fill_array(adj, num_ints);
     
-    clock_t goal = 4696 + clock();
+    clock_t goal = num_nodes*19 + clock();
     while (goal > clock());
         
 
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
     end = clock();
 
     double elapsed = ((double)(end - start));
-    printf("Duration: %0.f s\n", elapsed/ CLOCKS_PER_SEC);
+    printf("Duration: %0.f ms\n", elapsed / (CLOCKS_PER_SEC / 1000.0));
 
     return 0;
 }
