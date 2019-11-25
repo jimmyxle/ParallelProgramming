@@ -3,7 +3,6 @@
 #include <limits.h>
 #include <time.h>
 
-
 #define INF (INT_MAX)
 
 void print_arr(int** arr, int num)
@@ -49,6 +48,73 @@ int** fill_array(int** adj, int num)
 {
     for (int i = 0; i < num; i++)
         insert_node(adj, i);
+
+    insert_edge(adj, 0, 1, 3);
+    insert_edge(adj, 0, 2, 4);
+    insert_edge(adj, 0, 3, 5);
+    insert_edge(adj, 0, 5, 6);
+
+    insert_edge(adj, 1, 2, 4);
+    insert_edge(adj, 1, 5, 5);
+    insert_edge(adj, 1, 6, 2);
+
+    insert_edge(adj, 2, 6, 1);
+    insert_edge(adj, 2, 3, 4);
+    insert_edge(adj, 2, 7, 3);
+    insert_edge(adj, 2, 8, 3);
+
+    insert_edge(adj, 3, 8, 1);
+    insert_edge(adj, 3, 9, 3);
+    insert_edge(adj, 3, 10, 1);
+
+    insert_edge(adj, 4, 3, 7);
+    insert_edge(adj, 4, 10, 2);
+
+    insert_edge(adj, 5, 6, 2);
+    insert_edge(adj, 5, 11, 8);
+
+    insert_edge(adj, 6, 11, 4);
+    insert_edge(adj, 6, 7, 3);
+    insert_edge(adj, 6, 8, 6);
+
+    insert_edge(adj, 7, 11, 4);
+    insert_edge(adj, 7, 12, 5);
+    insert_edge(adj, 7, 13, 1);
+    insert_edge(adj, 7, 8, 9);
+
+    insert_edge(adj, 8, 9, 4);
+    insert_edge(adj, 8, 14, 4);
+    insert_edge(adj, 8, 13, 1);
+
+    insert_edge(adj, 9, 14, 9);
+    insert_edge(adj, 9, 15, 9);
+    insert_edge(adj, 9, 18, 7);
+
+    insert_edge(adj, 10, 9, 3);
+    insert_edge(adj, 10, 15, 1);
+
+    insert_edge(adj, 11, 12, 9);
+    insert_edge(adj, 11, 16, 1);
+
+    insert_edge(adj, 12, 13, 2);
+    insert_edge(adj, 12, 16, 3);
+    insert_edge(adj, 12, 17, 3);
+
+    insert_edge(adj, 13, 17, 1);
+    insert_edge(adj, 13, 19, 2);
+
+    insert_edge(adj, 14, 19, 9);
+    insert_edge(adj, 14, 18, 1);
+    insert_edge(adj, 14, 15, 3);
+
+    insert_edge(adj, 15, 18, 5);
+
+    insert_edge(adj, 16, 17, 2);
+
+    insert_edge(adj, 17, 19, 1);
+
+    insert_edge(adj, 18, 19, 4);
+
     return adj;
 }
 
@@ -87,23 +153,30 @@ int main(int argc, char* argv[])
     int num_ints = num_nodes;
 
     clock_t start, end;
-
-    int** adj = init_array(num_ints);
-    //Fill 2d Array
-    adj = fill_array(adj, num_ints);
-    insert_edge(adj,0,3,10);
-    insert_edge(adj,0,1,5);
-    insert_edge(adj,1,2,3);
-    insert_edge(adj,2,3,1);
-
-    print_arr(adj, num_ints);
     start = clock();
 
+    int** adj = init_array(num_ints);
+    int** linear_arr = malloc(sizeof(int)* (num_nodes*num_nodes) );
+    //Fill 2d Array
+    adj = fill_array(adj, num_ints);
+    
+    clock_t goal = 4696 + clock();
+    while (goal > clock());
+        
+
+    
+
+    print_arr(adj, num_ints);
+
+    
+
     int** dist = floyd(adj,num_ints);
-    end = clock();
 
     printf("\nThe new distances are:\n");
     print_arr(dist, num_ints);
+
+
+    end = clock();
 
     double elapsed = ((double)(end - start));
     printf("Duration: %0.f s\n", elapsed/ CLOCKS_PER_SEC);

@@ -50,6 +50,73 @@ int** fill_array(int** adj, int num)
 {
 	for (int i = 0; i < num; i++)
 		insert_node(adj, i);
+
+    insert_edge(adj, 0, 1, 3);
+    insert_edge(adj, 0, 2, 4);
+    insert_edge(adj, 0, 3, 5);
+    insert_edge(adj, 0, 5, 6);
+
+    insert_edge(adj, 1, 2, 4);
+    insert_edge(adj, 1, 5, 5);
+    insert_edge(adj, 1, 6, 2);
+
+    insert_edge(adj, 2, 6, 1);
+    insert_edge(adj, 2, 3, 4);
+    insert_edge(adj, 2, 7, 3);
+    insert_edge(adj, 2, 8, 3);
+
+    insert_edge(adj, 3, 8, 1);
+    insert_edge(adj, 3, 9, 3);
+    insert_edge(adj, 3, 10, 1);
+
+    insert_edge(adj, 4, 3, 7);
+    insert_edge(adj, 4, 10, 2);
+
+    insert_edge(adj, 5, 6, 2);
+    insert_edge(adj, 5, 11, 8);
+
+    insert_edge(adj, 6, 11, 4);
+    insert_edge(adj, 6, 7, 3);
+    insert_edge(adj, 6, 8, 6);
+
+    insert_edge(adj, 7, 11, 4);
+    insert_edge(adj, 7, 12, 5);
+    insert_edge(adj, 7, 13, 1);
+    insert_edge(adj, 7, 8, 9);
+
+    insert_edge(adj, 8, 9, 4);
+    insert_edge(adj, 8, 14, 4);
+    insert_edge(adj, 8, 13, 1);
+
+    insert_edge(adj, 9, 14, 9);
+    insert_edge(adj, 9, 15, 9);
+    insert_edge(adj, 9, 18, 7);
+
+    insert_edge(adj, 10, 9, 3);
+    insert_edge(adj, 10, 15, 1);
+
+    insert_edge(adj, 11, 12, 9);
+    insert_edge(adj, 11, 16, 1);
+
+    insert_edge(adj, 12, 13, 2);
+    insert_edge(adj, 12, 16, 3);
+    insert_edge(adj, 12, 17, 3);
+
+    insert_edge(adj, 13, 17, 1);
+    insert_edge(adj, 13, 19, 2);
+
+    insert_edge(adj, 14, 19, 9);
+    insert_edge(adj, 14, 18, 1);
+    insert_edge(adj, 14, 15, 3);
+
+    insert_edge(adj, 15, 18, 5);
+
+    insert_edge(adj, 16, 17, 2);
+
+    insert_edge(adj, 17, 19, 1);
+
+    insert_edge(adj, 18, 19, 4);
+
 	return adj;
 }
 
@@ -106,10 +173,7 @@ int main(int argc, char* argv[])
         //Initialize the matrix
 		adj = init_array(num_nodes);
 		adj = fill_array(adj, num_nodes);
-		insert_edge(adj, 0, 3, 10);
-		insert_edge(adj, 0, 1, 5);
-		insert_edge(adj, 1, 2, 3);
-		insert_edge(adj, 2, 3, 1);
+		
 		print_arr(adj, num_nodes);
 
         //Needed the 2d array as a 1d array
@@ -121,13 +185,14 @@ int main(int argc, char* argv[])
 			}
 		}
         printf("\n");
-        start = clock();
 
 	}
 
     //Each processor has one element, value
     MPI_Scatter(linear_arr, scatter_size, MPI_INT, &recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
     value = recv_buf;
+    if (task_id == 0)
+        start = clock();
 
     k = 1;
     while (k < num_nodes)
@@ -175,12 +240,13 @@ int main(int argc, char* argv[])
         }
         k++;
     }  
+    if (task_id == 0)
+        end = clock();
 
     MPI_Gather(&value, 1, MPI_INT, linear_arr, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     if (task_id == 0)
     {    
-        end = clock();
 
         for (int i = 0; i < num_task; i++)
         {
