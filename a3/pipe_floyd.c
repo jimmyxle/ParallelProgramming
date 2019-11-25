@@ -58,6 +58,7 @@ int main(int argc, char* argv[])
     int** adj, * linear_arr, * recv_buf, *local_arr, *outgoing;
     int d_i_k, d_k_j, i, j, k;
     MPI_Comm colcomm, rowcomm;
+    MPI_Request request;
 
     //Initialize MPI
     MPI_Init(NULL, NULL);
@@ -146,10 +147,10 @@ int main(int argc, char* argv[])
         {
             //send the index
             data_send = &r;
-            MPI_Send(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+            MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
 
             data_send = &linear_arr[r];
-            MPI_Send(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+            MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
         }
     }
     else
@@ -157,10 +158,12 @@ int main(int argc, char* argv[])
         
         for (int r = 0; r < num_elements; r++)
         {
-            MPI_Recv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
+            MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
+            MPI_Wait(&request, MPI_STATUSES_IGNORE);
             index = recv_buf;
 
-            MPI_Recv(recv_buf, scatter_size, MPI_INT, (task_id-1), 0, MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
+            MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id-1), 0, MPI_COMM_WORLD, &request);
+            MPI_Wait(&request, MPI_STATUSES_IGNORE);
             local_arr[*index] = *recv_buf;
 
             //printf("[%d]: %d at index %d received from [%d]\n", task_id, *index, local_arr[*index], task_id - 1);
@@ -178,12 +181,12 @@ int main(int argc, char* argv[])
                 d_k_j = local_arr[num_nodes * k + i];
                 if (d_i_k < INT_MAX && d_k_j < INT_MAX)
                 { 
-                if(value > (d_i_k + d_k_j))
-                {
-                    value = (d_i_k + d_k_j);
-                    printf("index [%d] : %d + %d = %d\n", r, d_i_k, d_k_j, value);
-                    local_arr[r] = value;
-                }
+                    if(value > (d_i_k + d_k_j))
+                    {
+                        value = (d_i_k + d_k_j);
+                        printf("index [%d] : %d + %d = %d\n", r, d_i_k, d_k_j, value);
+                        local_arr[r] = value;
+                    }
                 else
                 {
                     value = local_arr[r];
@@ -192,20 +195,22 @@ int main(int argc, char* argv[])
                 }
 
                 //send this data to next except if you're the last processor
-                if (task_id != num_task - 1)
-                {
-                    // send index
-                    data_send = &r;
-                    MPI_Send(data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD);
+                    if (task_id != num_task - 1)
+                    {
+                        
 
-                    //send data
-                    data_send = local_arr[r];
-                    MPI_Send(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD);
+                        // send index
+                        data_send = r;
+                        MPI_Isend(data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
 
-                    printf("[%d]: %d sent to [%d]\n", task_id, data_send, task_id + 1);
+                        //send data
+                        data_send = local_arr[r];
+                        MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+
+                        printf("[%d]: %d sent to [%d]\n", task_id, data_send, task_id + 1);
                     
-                }
-                outgoing[r] = 1;
+                    }
+                    outgoing[r] = 1;
                 }
                 
             } 
@@ -232,9 +237,14 @@ int main(int argc, char* argv[])
 
                 if (task_id != num_task - 1)
                 {
-                    value = local_arr[r];
-                    printf("[%d]: %d sent to [%d]\n", task_id, outgoing_data, task_id + 1);
-                    MPI_Send(&value, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD);
+                    data_send = &r;
+                    MPI_Isend(data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+
+                    //send data
+                    data_send = local_arr[r];
+                    MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+
+                    printf("[%d]: %d sent to [%d]\n", task_id, data_send, task_id + 1);
                 }
                 outgoing[r] = 1;
             }
