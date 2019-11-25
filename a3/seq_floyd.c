@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-//#include <conio.h>
+#include <time.h>
 
 
 #define INF (INT_MAX)
@@ -77,7 +77,16 @@ int** floyd(int** adj, int num)
 int main(int argc, char* argv[])
 {
     //Initialize
-    int num_ints = 4;
+    int num_nodes = 0; //should be number of total elements 
+
+    if (argc != 2)
+        printf("not enough args");
+    else
+        num_nodes = atoi(argv[1]);
+
+    int num_ints = num_nodes;
+
+    clock_t start, end;
 
     int** adj = init_array(num_ints);
     //Fill 2d Array
@@ -88,10 +97,16 @@ int main(int argc, char* argv[])
     insert_edge(adj,2,3,1);
 
     print_arr(adj, num_ints);
+    start = clock();
+
     int** dist = floyd(adj,num_ints);
+    end = clock();
+
     printf("\nThe new distances are:\n");
     print_arr(dist, num_ints);
-	
-//	_getch();
+
+    double elapsed = ((double)(end - start));
+    printf("Duration: %0.f s\n", elapsed/ CLOCKS_PER_SEC);
+
     return 0;
 }

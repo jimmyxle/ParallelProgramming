@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <limits.h>
 #include "mpi.h"
+#include <time.h>
+
 
 #define INF (INT_MAX)
 
@@ -54,10 +56,11 @@ int** fill_array(int** adj, int num)
 int main(int argc, char* argv[])
 {
 	//Declare all variables 
-	int num_task, task_id, num_nodes = 4, num_elements,scatter_size, *value, row_id, col_id;
+	int num_task, task_id, num_nodes , num_elements,scatter_size, *value, row_id, col_id;
 	int** adj, *linear_arr, *recv_buf;
     int d_i_k, d_k_j, i, j, k;
     MPI_Comm colcomm, rowcomm;
+    clock_t start, end;
 
     //Initialize MPI
 	MPI_Init(NULL, NULL);
@@ -71,6 +74,11 @@ int main(int argc, char* argv[])
 
         Split the world into columns and rows
     */
+    if (argc != 2)
+        printf("not enough args");
+    else
+        num_nodes = atoi(argv[1]);
+
     i = task_id % num_nodes;
     j = task_id / num_nodes;
     MPI_Comm_split(MPI_COMM_WORLD, i, task_id, &colcomm);
@@ -81,11 +89,9 @@ int main(int argc, char* argv[])
 
 
 
-	if (argc != 2)
-		printf("not enough args");
-	else
-		num_elements = atoi(argv[1]);
-	
+
+
+	num_elements = num_nodes*num_nodes;
     //Scatter size is how many elements each processor holds
     scatter_size = 1;
 
@@ -115,11 +121,14 @@ int main(int argc, char* argv[])
 			}
 		}
         printf("\n");
+        start = clock();
+
 	}
+
     //Each processor has one element, value
     MPI_Scatter(linear_arr, scatter_size, MPI_INT, &recv_buf, scatter_size, MPI_INT, 0, MPI_COMM_WORLD);
     value = recv_buf;
-    
+
     k = 1;
     while (k < num_nodes)
     {
@@ -168,11 +177,14 @@ int main(int argc, char* argv[])
     }  
 
     MPI_Gather(&value, 1, MPI_INT, linear_arr, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
     if (task_id == 0)
     {    
+        end = clock();
+
         for (int i = 0; i < num_task; i++)
         {
-            if (i % 4 == 0)
+            if (i % num_nodes == 0)
                 printf("\n");
             if (linear_arr[i] == INT_MAX)
                 printf("INF\t" );
@@ -181,7 +193,13 @@ int main(int argc, char* argv[])
         }
         printf("\n");
 
+        double elapsed = ((double)(end - start));
+        printf("Duration: %0.f s\n", elapsed / CLOCKS_PER_SEC);
     }
+
+
+    
+
 	MPI_Finalize();
 	return 0;
 }
