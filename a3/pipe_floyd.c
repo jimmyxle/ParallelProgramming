@@ -122,8 +122,10 @@ int main(int argc, char* argv[])
         {
             for (int t = 0; t < num_nodes; t++)
             {   
-                linear_arr[num_nodes * s + t] = adj[s][t];
-                //linear_arr[num_nodes * s + t] = num_nodes*s+t;
+            int* data = adj[s][t];
+
+                //linear_arr[num_nodes * s + t] = data;
+                linear_arr[num_nodes * s + t] = num_nodes*s+t;
             }
         }
         printf("\nOriginal\n");
@@ -151,22 +153,23 @@ int main(int argc, char* argv[])
     
 
     int* index;
-    int target_id = 3;
+    int target_id = 1;
 
 
     if (task_id == 0)
     {
+        
         for (int r = 0; r < num_elements; r++)
         {
             //send the index
             data_send = r;
 
-            //MPI_Isend(&data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
+            MPI_Isend(&data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
             printf("\t\t\t[%d] %d", task_id, data_send);
 
-            data_send = linear_arr[r];
-           //MPI_Isend(&data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
-            printf("\t[%d] %d\n", task_id, data_send);
+            data_send = &linear_arr[r];
+            MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
+            printf("\t[%d] %d\n", task_id, *data_send);
 
         }
     }
@@ -217,8 +220,8 @@ int main(int argc, char* argv[])
                           
                                 local_arr[s] = (d_i_k + d_k_j);
                             /**/
-                               /* if (task_id == target_id)
-                                    printf("LARGER index [%d] : %d + %d = %d, < %d\n", s, d_i_k, d_k_j,d_i_k+d_k_j ,local_arr[s]);*/
+                                if (task_id == target_id)
+                                    printf("LARGER index [%d] : %d + %d = %d, < %d\n", s, d_i_k, d_k_j,d_i_k+d_k_j ,local_arr[s]);
 
                                 local_arr[s] = value;
                             }
@@ -227,8 +230,8 @@ int main(int argc, char* argv[])
 
                                 value = local_arr[s];
                             /**/
-                              /*  if (task_id == target_id)
-                                    printf("SMALLER index [%d] : %d + %d = %d, > %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);*/
+                                if (task_id == target_id)
+                                    printf("SMALLER index [%d] : %d + %d = %d, > %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);
 
                             }
                             outgoing[s] = 1;
@@ -236,10 +239,10 @@ int main(int argc, char* argv[])
                             if (task_id < num_task - 1)
                             {
                                 data_send = s;
-                                //MPI_Isend(&data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+                                MPI_Isend(&data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
 
                                 data_send = &local_arr[s];
-                                //MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+                                MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
                                 if (task_id == target_id)
                                     printf("data sent %d, %d \n", s, local_arr[s]);
                             }
