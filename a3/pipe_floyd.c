@@ -124,8 +124,8 @@ int main(int argc, char* argv[])
         {
             for (int t = 0; t < num_nodes; t++)
             {   
-                //linear_arr[num_nodes * s + t] = adj[s][t];
-                linear_arr[num_nodes * s + t] = rand() % (num_nodes);
+                linear_arr[num_nodes * s + t] = adj[s][t];
+                //linear_arr[num_nodes * s + t] = rand() % (num_nodes);
             }
         }
         printf("\nOriginal\n");
@@ -178,11 +178,11 @@ int main(int argc, char* argv[])
             data_send = r;
 
             MPI_Isend(&data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
-            printf("\t\t\t[%d] %d", task_id, data_send);
+            //printf("\t\t\t[%d] %d", task_id, data_send);
 
             data_send = &linear_arr[r];
             MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
-            printf("\t[%d] %d\n", task_id, *data_send);
+            //printf("\t[%d] %d\n", task_id, *data_send);
 
         }
     }
@@ -219,27 +219,7 @@ int main(int argc, char* argv[])
                /* if (task_id == target_id)
                     printf("AFTER: %d \n", local_arr[index]);*/
             }
-            //else
-            //{
-            //   // printf("recv all numbers\n");
-            //    printf("send count: %d and r: %d \n",send_count, r);
-            //    //do work if possible
-
-            //    if (task_id == target_id)
-            //    {
-            //        printf("[%d]\n", task_id);
-
-            //        for (int r = 0; r < num_elements; r++)
-            //        {
-            //            if (r % num_nodes == 0)
-            //            {
-            //                printf("\n");
-            //            }
-            //            printf("%d\t ", local_arr[r]);
-
-            //        }
-            //    }
-            //}
+ 
 
 
             
@@ -261,9 +241,9 @@ int main(int argc, char* argv[])
 					//    printf("[%d]: d_i_k: %d d_k_j: %d\n",task_id, d_i_k, d_k_j);
 
 
-					if (d_i_k >= 0 && d_k_j >= 0)
+					if (d_i_k >= 0 && d_k_j >= 0 && local_arr[s] >= 0)
 					{
-						if (local_arr[s] >= 0 && d_i_k < INT_MAX && d_k_j < INT_MAX)
+						if (d_i_k < INT_MAX && d_k_j < INT_MAX && (local_arr[s] >(d_i_k + d_k_j)))
 						{
 							if (local_arr[s] > (d_i_k + d_k_j))
 							{
@@ -272,8 +252,6 @@ int main(int argc, char* argv[])
 								/**/
 								if (task_id == target_id)
 									printf("LARGER index [%d] : %d + %d = %d, < %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);
-
-								local_arr[s] = value;
 							}
 							else
 							{
@@ -319,76 +297,26 @@ int main(int argc, char* argv[])
 						{
 							printf("\n");
 						}
-						printf("(%d / %d)\t", r, num_elements);
+						
 						printf(" %d\t ", local_arr[r]);
 
 					}
 				}
 
                 r == num_elements+1;
-                //printf("send all possible\n");
+				printf("\n");
             }
             
 
-            
 
             r++;
 
         }
        
-		//printf("[%d] out of the loop\n", task_id);
-
-  //      //if not 0, waits for work
-  //      if (task_id == (num_task-1) )
-  //      {
-  //          printf("[%d] OUTPUT \n", task_id);
-
-  //          for (int r = 0; r < num_elements; r++)
-  //          {
-  //              if (r % num_nodes == 0)
-  //              {
-  //                  printf("\n");
-  //              }
-		//		printf("(%d / %d)\t", r, num_elements);
-  //              printf(" %d\t ", local_arr[r]);
-
-  //          }
-  //      }
-       
-        
 
     }
 
-   /* printf("[%d]\n", task_id);
-
-    for (int r = 0; r < num_elements; r++)
-    {
-        if (r % num_nodes == 0)
-        {
-            printf("\n");
-        }
-        printf("%d\t ", local_arr[r]);
-
-    }*/
-
-    //MPI_Barrier(MPI_COMM_WORLD);
-
-
-
-    //if (task_id == 0)
-    //{
-    //    for (int i = 0; i < num_task; i++)
-    //    {
-    //        if (i % 4 == 0)
-    //            printf("\n");
-    //        if (linear_arr[i] == INT_MAX)
-    //            printf("INF\t");
-    //        else
-    //            printf("%d \t", linear_arr[i]);
-    //    }
-    //    printf("\n");
-
-    //}
+ 
     MPI_Finalize();
     return 0;
 }
