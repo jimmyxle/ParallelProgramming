@@ -4,7 +4,7 @@
 #include "mpi.h"
 #include <time.h>
 
-#define INF (99)
+#define INF (INT_MAX)
 
 void print_arr(int** arr, int num)
 {
@@ -58,9 +58,11 @@ int** fill_array(int** adj, int num)
         {
             int temp1 = rand() % (num);
             int temp2 = rand() % (num);
+   
+
             if (temp1 != temp2)
             {
-                insert_edge(adj, temp1, temp2, rand() % 10);
+                insert_edge(adj, temp1, temp2, rand() % (num));
             }
         }
     }
@@ -122,10 +124,7 @@ int main(int argc, char* argv[])
         {
             for (int t = 0; t < num_nodes; t++)
             {   
-            int* data = adj[s][t];
-
-                //linear_arr[num_nodes * s + t] = data;
-                linear_arr[num_nodes * s + t] = num_nodes*s+t;
+                linear_arr[num_nodes * s + t] = adj[s][t];
             }
         }
         printf("\nOriginal\n");
@@ -177,29 +176,61 @@ int main(int argc, char* argv[])
     {
         int r =0;
         int* index = 0;
-        
+        int recv_count = 0;
+        int send_count = 0;
 
         while (r < num_elements)
         {
-            //receive from previous proc
-            MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
-            MPI_Wait(&request, MPI_STATUSES_IGNORE);
-            index = recv_buf;
-            /**/
-            if (task_id == target_id)
-                printf("index recv %d ",*index);
+            if (recv_count < num_elements)
+            {
+                //do work if possible
 
-            MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
-            MPI_Wait(&request, MPI_STATUSES_IGNORE);
-            local_arr[*index] = *recv_buf;
+                if (task_id == target_id)
+                {
+                    printf("[%d]\n", task_id);
 
-            if (task_id == target_id)
-                printf("val recv %d \n", local_arr[*index]);
+                    for (int r = 0; r < num_elements; r++)
+                    {
+                        if (r % num_nodes == 0)
+                        {
+                            printf("\n");
+                        }
+                        printf("%d\t ", local_arr[r]);
+
+                    }
+                }
 
 
-            //do work if possible
+                //receive from previous proc
+                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUSES_IGNORE);
+                index = recv_buf;
+            
+                /**/
+                if (task_id == target_id)
+                    printf("index recv %d :",*index);
+
+                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUSES_IGNORE);
+                if (task_id == target_id)
+                    printf("BEFORE: %d \t", local_arr[*index]);
+                local_arr[*index] = *recv_buf;
+                recv_count++;
+
+                if (task_id == target_id)
+                    printf("AFTER: %d \n", local_arr[*index]);
+            }
+            else
+            {
+                printf("recv all numbers\n");
+            }
             
 
+
+            
+
+
+            
             for (int s = 0; s < num_elements; s++)
             {
                 i = s % num_nodes;
@@ -209,8 +240,9 @@ int main(int argc, char* argv[])
 
                 if (outgoing[s] != 1)
                 {
-                    //printf("[%d]: %d %d\n",task_id, d_i_k, d_k_j);
-
+                    //printf("[%d]: d_i_k: %d d_k_j: %d\n",task_id, d_i_k, d_k_j);
+                    
+                   
                     if (d_i_k < INT_MAX && d_k_j < INT_MAX)
                     {
                         if (local_arr[s] >= 0 && d_i_k >= 0 && d_k_j >= 0)
@@ -246,12 +278,19 @@ int main(int argc, char* argv[])
                                 if (task_id == target_id)
                                     printf("data sent %d, %d \n", s, local_arr[s]);
                             }
-                            r++;
+                            send_count++;
+                            
 
                         }
                     }
                 }
             }
+            if (send_count == num_elements)
+               r == num_elements; 
+            /*else if (send_count < num_elements)
+               r--;*/
+
+            r++;
 
         }
        
@@ -271,7 +310,6 @@ int main(int argc, char* argv[])
                 printf("%d\t ", local_arr[r]);
 
             }
-
         }
         
         
