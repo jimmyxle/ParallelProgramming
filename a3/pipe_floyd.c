@@ -124,7 +124,8 @@ int main(int argc, char* argv[])
         {
             for (int t = 0; t < num_nodes; t++)
             {   
-                linear_arr[num_nodes * s + t] = adj[s][t];
+                //linear_arr[num_nodes * s + t] = adj[s][t];
+                linear_arr[num_nodes * s + t] = rand() % (num_nodes);
             }
         }
         printf("\nOriginal\n");
@@ -153,9 +154,22 @@ int main(int argc, char* argv[])
 
     int* index;
     int target_id = 1;
+    if (num_task == 1)
+    {
+        for (int r = 0; r < num_elements; r++)
+        {
+            //send the index
+            data_send = r;
 
+            printf("\t\t\t[%d] %d", task_id, data_send);
 
-    if (task_id == 0)
+            data_send = &linear_arr[r];
+            printf("\t[%d] %d\n", task_id, *data_send);
+
+        }
+    }
+
+    else if (task_id == 0 && num_task > 1)
     {
         
         for (int r = 0; r < num_elements; r++)
@@ -175,7 +189,6 @@ int main(int argc, char* argv[])
     else
     {
         int r =0;
-        int* index = 0;
         int recv_count = 0;
         int send_count = 0;
 
@@ -183,6 +196,32 @@ int main(int argc, char* argv[])
         {
             if (recv_count < num_elements)
             {
+                
+
+
+                //receive from previous proc
+                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUSES_IGNORE);
+                int index = *recv_buf;
+                            
+                /**/
+                if (task_id == target_id)
+                    printf("index recv %d :",index);
+
+                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUSES_IGNORE);
+                if (task_id == target_id)
+                    printf("BEFORE: %d \t", local_arr[index]);
+                local_arr[index] = *recv_buf;
+                recv_count++;
+
+                if (task_id == target_id)
+                    printf("AFTER: %d \n", local_arr[index]);
+            }
+            else
+            {
+                printf("recv all numbers\n");
+                printf("send count: %d\n",send_count);
                 //do work if possible
 
                 if (task_id == target_id)
@@ -199,31 +238,9 @@ int main(int argc, char* argv[])
 
                     }
                 }
-
-
-                //receive from previous proc
-                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
-                MPI_Wait(&request, MPI_STATUSES_IGNORE);
-                index = recv_buf;
-            
-                /**/
-                if (task_id == target_id)
-                    printf("index recv %d :",*index);
-
-                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
-                MPI_Wait(&request, MPI_STATUSES_IGNORE);
-                if (task_id == target_id)
-                    printf("BEFORE: %d \t", local_arr[*index]);
-                local_arr[*index] = *recv_buf;
-                recv_count++;
-
-                if (task_id == target_id)
-                    printf("AFTER: %d \n", local_arr[*index]);
             }
-            else
-            {
-                printf("recv all numbers\n");
-            }
+
+
             
 
 
@@ -240,7 +257,7 @@ int main(int argc, char* argv[])
 
                 if (outgoing[s] != 1)
                 {
-                    //printf("[%d]: d_i_k: %d d_k_j: %d\n",task_id, d_i_k, d_k_j);
+                    printf("[%d]: d_i_k: %d d_k_j: %d\n",task_id, d_i_k, d_k_j);
                     
                    
                     if (d_i_k < INT_MAX && d_k_j < INT_MAX)
@@ -266,7 +283,10 @@ int main(int argc, char* argv[])
                                     printf("SMALLER index [%d] : %d + %d = %d, > %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);
 
                             }
+
                             outgoing[s] = 1;
+                            if (task_id == target_id)
+                                printf("data sent %d, %d \n", s, local_arr[s]);
 
                             if (task_id < num_task - 1)
                             {
@@ -285,10 +305,16 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-            if (send_count == num_elements)
-               r == num_elements; 
-            /*else if (send_count < num_elements)
-               r--;*/
+
+            if (send_count == num_elements-1)
+            {
+                r == num_elements;
+                printf("send all possible\n");
+            }
+            else if (send_count < num_elements)
+                r--;
+
+           
 
             r++;
 
