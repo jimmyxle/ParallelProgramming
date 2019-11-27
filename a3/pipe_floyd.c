@@ -72,10 +72,9 @@ int** fill_array(int** adj, int num)
 int main(int argc, char* argv[])
 {
     //Declare all variables 
-    int num_task, task_id, num_nodes, num_elements, scatter_size, * value, row_id, col_id;
+    int num_task, task_id, num_nodes, num_elements, scatter_size, * value;
     int** adj, * linear_arr, * recv_buf, *local_arr, *outgoing;
     int d_i_k, d_k_j, i, j, k;
-    MPI_Comm colcomm, rowcomm;
     MPI_Request request;
 
     //Initialize MPI
@@ -150,12 +149,10 @@ int main(int argc, char* argv[])
     */
 
     k = task_id;
-    int* incoming_data;
     int outgoing_data = 0;
     int* data_send;
     
 
-    int* index;
     int target_id = num_task-1;
 
     if (num_task == 1)
@@ -163,7 +160,7 @@ int main(int argc, char* argv[])
         for (int r = 0; r < num_elements; r++)
         {
             //send the index
-            data_send = r;
+            data_send = &r;
 
             //printf("\t\t\t[%d] %d", task_id, data_send);
 
@@ -179,9 +176,9 @@ int main(int argc, char* argv[])
         for (int r = 0; r < num_elements; r++)
         {
             //send the index
-            data_send = r;
+            data_send = &r;
 
-            MPI_Isend(&data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
+            MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
             //printf("\t\t\t[%d] %d", task_id, data_send);
 
             data_send = &linear_arr[r];
@@ -258,7 +255,7 @@ int main(int argc, char* argv[])
 						else
 						{
 
-							value = local_arr[s];
+							value = &local_arr[s];
 							/**/
 							/*if (task_id == target_id)
 								printf("SMALLER index [%d] : %d + %d = %d, > %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);*/
@@ -271,9 +268,9 @@ int main(int argc, char* argv[])
 
 						if (task_id < num_task - 1)
 						{
-							data_send = s;
+							data_send = &s;
 
-							MPI_Isend(&data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+							MPI_Isend(data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
 							data_send = &local_arr[s];
 
 							MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
@@ -292,7 +289,7 @@ int main(int argc, char* argv[])
 
 			if (send_count == num_elements)
 			{
-				r == num_elements+1;
+				r = num_elements+1;
 			}
             
 
