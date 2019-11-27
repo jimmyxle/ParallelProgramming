@@ -62,7 +62,7 @@ int** fill_array(int** adj, int num)
 
             if (temp1 != temp2)
             {
-                insert_edge(adj, temp1, temp2, rand() % (num));
+                insert_edge(adj, temp1, temp2, rand() % (20));
             }
         }
     }
@@ -129,16 +129,19 @@ int main(int argc, char* argv[])
             }
         }
         printf("\nOriginal\n");
-        for (int r = 0; r < num_elements; r++)
-        {
-            if (r % num_nodes == 0)
-            {
-                printf("\n");
-            }
-            printf("%d\t ", linear_arr[r]);
+		for (int r = 0; r < num_elements; r++)
+		{
+			if (r % num_nodes == 0)
+			{
+				printf("\n");
+			}
+			if (linear_arr[r] == INF)
+				printf("INF\t");
+			else
+				printf(" %d\t ", linear_arr[r]);
 
-        }
-        printf("\n%d num elements \n\n", num_elements);
+		}
+        printf("\n");
 	
     }
     /*
@@ -153,7 +156,8 @@ int main(int argc, char* argv[])
     
 
     int* index;
-    int target_id = 1;
+    int target_id = 2;
+
     if (num_task == 1)
     {
         for (int r = 0; r < num_elements; r++)
@@ -220,14 +224,6 @@ int main(int argc, char* argv[])
                     printf("AFTER: %d \n", local_arr[index]);*/
             }
  
-
-
-            
-
-
-            
-
-
             
 			for (int s = 0; s < num_elements; s++)
 			{
@@ -274,8 +270,8 @@ int main(int argc, char* argv[])
 
 								data_send = &local_arr[s];
 								MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
-								/*if (task_id == target_id)
-									printf("data sent %d, %d \n", s, local_arr[s]);*/
+								if (task_id == target_id)
+									printf("data sent %d, %d \n", s, local_arr[s]);
 							}
 							send_count++;
 
@@ -285,27 +281,11 @@ int main(int argc, char* argv[])
 				}
 			}
 
-            if (send_count == num_elements)
-            {
-				if (task_id == (num_task - 1))
-				{
-					printf("[%d] OUTPUT \n", task_id);
 
-					for (int r = 0; r < num_elements; r++)
-					{
-						if (r % num_nodes == 0)
-						{
-							printf("\n");
-						}
-						
-						printf(" %d\t ", local_arr[r]);
-
-					}
-				}
-
-                r == num_elements+1;
-				printf("\n");
-            }
+			if (send_count == num_elements)
+			{
+				r == num_elements+1;
+			}
             
 
 
@@ -316,6 +296,23 @@ int main(int argc, char* argv[])
 
     }
 
+	if (task_id == (num_task - 1))
+	{
+		printf("[%d] OUTPUT \n", task_id);
+
+		for (int r = 0; r < num_elements; r++)
+		{
+			if (r % num_nodes == 0)
+			{
+				printf("\n");
+			}
+			if (local_arr[r] == INF)
+				printf("INF\t");
+			else
+				printf(" %d\t ", local_arr[r]);
+
+		}
+	}
  
     MPI_Finalize();
     return 0;
