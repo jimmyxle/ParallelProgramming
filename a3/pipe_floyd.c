@@ -76,6 +76,7 @@ int main(int argc, char* argv[])
     int** adj, * linear_arr, * recv_buf, *local_arr, *outgoing;
     int d_i_k, d_k_j, i, j, k;
     MPI_Request request;
+	clock_t start, end;
 
     //Initialize MPI
     MPI_Init(NULL, NULL);
@@ -154,6 +155,7 @@ int main(int argc, char* argv[])
     
 
     int target_id = num_task-1;
+	start = clock();
 
     if (num_task == 1)
     {
@@ -201,8 +203,6 @@ int main(int argc, char* argv[])
             if (recv_count < num_elements)
             {
                 
-
-				
                 //receive from previous proc
                 MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
                 MPI_Wait(&request, MPI_STATUSES_IGNORE);
@@ -303,6 +303,8 @@ int main(int argc, char* argv[])
 
 	if (task_id == (num_task - 1))
 	{
+		end = clock();
+
 		printf("[%d] OUTPUT \n", task_id);
 
 		for (int r = 0; r < num_elements; r++)
@@ -317,6 +319,11 @@ int main(int argc, char* argv[])
 				printf(" %d\t ", local_arr[r]);
 
 		}
+		printf("\n");
+
+
+		double elapsed = ((double)(end - start));
+		printf("Duration: %0.f ms\n", elapsed / (CLOCKS_PER_SEC / 1000.0));
 	}
  
     MPI_Finalize();
