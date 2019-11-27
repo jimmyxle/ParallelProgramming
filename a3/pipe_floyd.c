@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <limits.h>
 #include "mpi.h"
+#include <time.h>
 
 #define INF (INT_MAX)
 
 void print_arr(int** arr, int num)
 {
+    printf("\n\nPrinting original matrix\n\n");
     for (int i = 0; i < num; i++)
     {
         for (int j = 0; j < num; j++)
@@ -16,7 +18,7 @@ void print_arr(int** arr, int num)
             else
                 printf("%d\t", arr[i][j]);
         }
-        printf("\n");
+        printf("\n\n");
     }
 }
 
@@ -46,108 +48,56 @@ int** init_array(int num)
 
 int** fill_array(int** adj, int num)
 {
+    time_t t;
+    srand((unsigned)time(&t));
     for (int i = 0; i < num; i++)
         insert_node(adj, i);
+    for (int i = 0; i < num; i++)
+    {
+        for (int j = 0; j < num; j++)
+        {
+            int temp1 = rand() % (num);
+            int temp2 = rand() % (num);
+   
 
-    insert_edge(adj, 0, 1, 3);
-    insert_edge(adj, 0, 2, 4);
-    insert_edge(adj, 0, 3, 5);
-    insert_edge(adj, 0, 5, 6);
-
-    insert_edge(adj, 1, 2, 4);
-    insert_edge(adj, 1, 5, 5);
-    insert_edge(adj, 1, 6, 2);
-
-    insert_edge(adj, 2, 6, 1);
-    insert_edge(adj, 2, 3, 4);
-    insert_edge(adj, 2, 7, 3);
-    insert_edge(adj, 2, 8, 3);
-
-    insert_edge(adj, 3, 8, 1);
-    insert_edge(adj, 3, 9, 3);
-    insert_edge(adj, 3, 10, 1);
-
-    insert_edge(adj, 4, 3, 7);
-    insert_edge(adj, 4, 10, 2);
-
-    insert_edge(adj, 5, 6, 2);
-    insert_edge(adj, 5, 11, 8);
-
-    insert_edge(adj, 6, 11, 4);
-    insert_edge(adj, 6, 7, 3);
-    insert_edge(adj, 6, 8, 6);
-
-    insert_edge(adj, 7, 11, 4);
-    insert_edge(adj, 7, 12, 5);
-    insert_edge(adj, 7, 13, 1);
-    insert_edge(adj, 7, 8, 9);
-
-    insert_edge(adj, 8, 9, 4);
-    insert_edge(adj, 8, 14, 4);
-    insert_edge(adj, 8, 13, 1);
-
-    insert_edge(adj, 9, 14, 9);
-    insert_edge(adj, 9, 15, 9);
-    insert_edge(adj, 9, 18, 7);
-
-    insert_edge(adj, 10, 9, 3);
-    insert_edge(adj, 10, 15, 1);
-
-    insert_edge(adj, 11, 12, 9);
-    insert_edge(adj, 11, 16, 1);
-
-    insert_edge(adj, 12, 13, 2);
-    insert_edge(adj, 12, 16, 3);
-    insert_edge(adj, 12, 17, 3);
-
-    insert_edge(adj, 13, 17, 1);
-    insert_edge(adj, 13, 19, 2);
-
-    insert_edge(adj, 14, 19, 9);
-    insert_edge(adj, 14, 18, 1);
-    insert_edge(adj, 14, 15, 3);
-
-    insert_edge(adj, 15, 18, 5);
-
-    insert_edge(adj, 16, 17, 2);
-
-    insert_edge(adj, 17, 19, 1);
-
-    insert_edge(adj, 18, 19, 4);
-
+            if (temp1 != temp2)
+            {
+                insert_edge(adj, temp1, temp2, rand() % (20));
+            }
+        }
+    }
     return adj;
 }
 
 int main(int argc, char* argv[])
 {
     //Declare all variables 
-    int num_task, task_id, num_nodes = 4, num_elements = 0, scatter_size, * value, row_id, col_id;
-    int** adj, * linear_arr, * recv_buf, *local_arr, *outgoing;
+    int num_task, task_id, num_nodes, num_elements, scatter_size, target_id;
+    int** adj, * linear_arr, * recv_buf, *local_arr, *outgoing, *data_send, *value;
     int d_i_k, d_k_j, i, j, k;
-    MPI_Comm colcomm, rowcomm;
     MPI_Request request;
+	clock_t start, end;
 
     //Initialize MPI
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &num_task);
     MPI_Comm_rank(MPI_COMM_WORLD, &task_id);
 
-    
-
-
 
     if (argc != 2)
         printf("not enough args");
     else
-        num_elements = atoi(argv[1]);
+        num_nodes = atoi(argv[1]);
+
+    num_elements = num_nodes*num_nodes;
 
     //Scatter size is how many elements each processor holds
     scatter_size = 1;
 
-    linear_arr = (int*)malloc(sizeof(int) * num_task);
+    linear_arr = (int*)malloc(sizeof(int) * num_elements);
     recv_buf = (int*)malloc(sizeof(int) * scatter_size);
     value = (int*)malloc(sizeof(int) * scatter_size);
-    local_arr = (int*)malloc(sizeof(int) * num_task);
+    local_arr = (int*)malloc(sizeof(int) * num_elements);
     outgoing = (int*)malloc(sizeof(int) * num_elements);
     //set local_arr to be filled with negatives. Useful for when we start receivng data, we know which elements are 
     //available if they're positive.
@@ -165,201 +115,129 @@ int main(int argc, char* argv[])
         adj = fill_array(adj, num_nodes);
   
         print_arr(adj, num_nodes);
-
+		
         //Needed the 2d array as a 1d array
         for (int s = 0; s < num_nodes; s++)
         {
             for (int t = 0; t < num_nodes; t++)
-            {
-                //linear_arr[num_nodes * s + t] = adj[s][t];
-                linear_arr[num_nodes * s + t] = num_nodes*s+t;
-            }
+                linear_arr[num_nodes * s + t] = adj[s][t];
         }
-        for (int r = 0; r < num_elements; r++)
-        {
-            if (r % num_nodes == 0)
-            {
-                printf("\n");
-            }
-            printf("%d\t ", linear_arr[r]);
-
-        }
-        printf("\n%d num elements \n", num_elements);
-
+        
+	
     }
-    /*
-        each processor, send info, do work
-        each processor does work at k
-    */
 
     k = task_id;
-    int* incoming_data;
-    int outgoing_data = 0;
-    int* data_send;
-    i = task_id % num_nodes;
-    j = task_id / num_nodes;
 
-    int* index;
+    target_id = num_task-1;
+	start = clock();
 
-    if (task_id == 0)
+    if (num_task == 1)
     {
-        //proc0 starts the chain
-        //do work
-
-        //send work
         for (int r = 0; r < num_elements; r++)
         {
-            //send the index
+            data_send = &r;
+            data_send = &linear_arr[r];
+        }
+    }
+	//send the initial data
+    else if (task_id == 0 && num_task > 1)
+    {
+        for (int r = 0; r < num_elements; r++)
+        {
             data_send = &r;
             MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
-
             data_send = &linear_arr[r];
             MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
         }
     }
     else
     {
-        
-        for (int r = 0; r < num_elements; r++)
+        int r = 0;
+        int recv_count = 0;
+        int send_count = 0;
+
+
+        while (r < num_elements)
         {
-            MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
-            MPI_Wait(&request, MPI_STATUSES_IGNORE);
-            index = recv_buf;
-
-            MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id-1), 0, MPI_COMM_WORLD, &request);
-            MPI_Wait(&request, MPI_STATUSES_IGNORE);
-            local_arr[*index] = *recv_buf;
-
-            //printf("[%d]: %d at index %d received from [%d]\n", task_id, *index, local_arr[*index], task_id - 1);
-
-
-            // do work if you get everything
-
-            //if you do work, put in outgoing arr
-           
-
-            //check if the val, plus its dependents have actual values. Earlier these were set to -1
-            if (local_arr[r] >= 0 && local_arr[k + num_nodes * j] >= 0 && local_arr[num_nodes * k + i] >= 0)
+            if (recv_count < num_elements)
             {
-                d_i_k = local_arr[k + num_nodes * j];
-                d_k_j = local_arr[num_nodes * k + i];
-                if (d_i_k < INT_MAX && d_k_j < INT_MAX)
-                { 
-                    if(value > (d_i_k + d_k_j))
-                    {
-                        value = (d_i_k + d_k_j);
-                        printf("index [%d] : %d + %d = %d\n", r, d_i_k, d_k_j, value);
-                        local_arr[r] = value;
-                    }
-                else
-                {
-                    value = local_arr[r];
-                    printf("index [%d] : value is now: %d\n", r, value);
+                //receive data from previous proc
+                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUSES_IGNORE);
+                int index = *recv_buf;
 
-                }
+                MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUSES_IGNORE);
 
-                //send this data to next except if you're the last processor
-                    if (task_id != num_task - 1)
-                    {
-                        
-
-                        // send index
-                        data_send = r;
-                        MPI_Isend(data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
-
-                        //send data
-                        data_send = local_arr[r];
-                        MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
-
-                        printf("[%d]: %d sent to [%d]\n", task_id, data_send, task_id + 1);
-                    
-                    }
-                    outgoing[r] = 1;
-                }
-                
-            } 
-        }
-        /* This is for any elements not sent yet */
-        for (int r = 0; r < num_elements; r++)
-        {
-            if (outgoing[r] != 1)
-            {
-                d_i_k = local_arr[k + num_nodes * j];
-                d_k_j = local_arr[num_nodes * k + i];
-                if (d_i_k < INT_MAX && d_k_j < INT_MAX && (value > (d_i_k + d_k_j)))
-                {
-                    value = (d_i_k + d_k_j);
-                    printf("index [%d] : %d + %d = %d\n", r, d_i_k, d_k_j, value);
-                    local_arr[r] = value;
-                }
-                else
-                {
-                    value = local_arr[r];
-                    printf("index [%d] : value is now: %d\n", r, value);
-
-                }
-
-                if (task_id != num_task - 1)
-                {
-                    data_send = &r;
-                    MPI_Isend(data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
-
-                    //send data
-                    data_send = local_arr[r];
-                    MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
-
-                    printf("[%d]: %d sent to [%d]\n", task_id, data_send, task_id + 1);
-                }
-                outgoing[r] = 1;
+                local_arr[index] = *recv_buf;
+                recv_count++;
             }
+            
+			for (int s = 0; s < num_elements; s++)
+			{
+				i = s % num_nodes;
+				j = s / num_nodes;
+				d_i_k = local_arr[k + num_nodes * j];
+				d_k_j = local_arr[num_nodes * k + i];
+
+				if (outgoing[s] != 1)
+				{
+
+					//all values initialized to -1, check to see if they have been changed
+					if (d_i_k >= 0 && d_k_j >= 0 && local_arr[s] >= 0)
+					{
+						//change local value if there is a better minimum
+						if (d_i_k < INT_MAX && d_k_j < INT_MAX && (local_arr[s] > (d_i_k + d_k_j)))
+						{
+							if (local_arr[s] > (d_i_k + d_k_j))
+								local_arr[s] = (d_i_k + d_k_j);
+						}
+						else
+							value = &local_arr[s];
+
+						outgoing[s] = 1;
+						//send data if you're not the last processor
+						if (task_id < num_task - 1)
+						{
+							data_send = &s;
+							MPI_Isend(data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+							data_send = &local_arr[s];
+							MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+						}
+						send_count++;
+					}
+				}
+			}
+			if (send_count == num_elements)
+			{
+				r = num_elements+1;
+			}
+            r++;
         }
-
-
-        //if not 0, waits for work
-        printf("[%d]\n", task_id);
-
-        for (int r = 0; r < num_elements; r++)
-        {
-            if (r % num_nodes == 0)
-            {
-                printf("\n");
-            }
-            printf("%d\t ", local_arr[r]);
-
-        }
-
     }
 
-   /* printf("[%d]\n", task_id);
 
-    for (int r = 0; r < num_elements; r++)
-    {
-        if (r % num_nodes == 0)
-        {
-            printf("\n");
-        }
-        printf("%d\t ", local_arr[r]);
+	if (task_id == (num_task - 1))
+	{
+		end = clock();
+		printf("[%d] OUTPUT \n", task_id);
+		for (int r = 0; r < num_elements; r++)
+		{
+			if (r % num_nodes == 0)
+			{
+				printf("\n");
+			}
+			if (local_arr[r] == INF)
+				printf("INF\t");
+			else
+				printf(" %d\t ", local_arr[r]);
+		}
+		printf("\n");
 
-    }*/
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-
-
-    //if (task_id == 0)
-    //{
-    //    for (int i = 0; i < num_task; i++)
-    //    {
-    //        if (i % 4 == 0)
-    //            printf("\n");
-    //        if (linear_arr[i] == INT_MAX)
-    //            printf("INF\t");
-    //        else
-    //            printf("%d \t", linear_arr[i]);
-    //    }
-    //    printf("\n");
-
-    //}
+		double elapsed = ((double)(end - start));
+		printf("Duration: %0.f ms\n", elapsed / (CLOCKS_PER_SEC / 1000.0));
+	}
+ 
     MPI_Finalize();
     return 0;
 }

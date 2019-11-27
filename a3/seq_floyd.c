@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
     //Fill 2d Array
     adj = fill_array(adj, num_ints);
     
-    clock_t goal = num_nodes*19 + clock();
+    clock_t goal = num_nodes*6 + clock();
     while (goal > clock());
         
 
