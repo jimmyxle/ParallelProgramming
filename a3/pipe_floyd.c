@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
     
 
     int* index;
-    int target_id = 2;
+    int target_id = num_task-1;
 
     if (num_task == 1)
     {
@@ -186,6 +186,8 @@ int main(int argc, char* argv[])
 
             data_send = &linear_arr[r];
             MPI_Isend(data_send, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &request);
+
+
             //printf("\t[%d] %d\n", task_id, *data_send);
 
         }
@@ -203,7 +205,7 @@ int main(int argc, char* argv[])
             {
                 
 
-
+				
                 //receive from previous proc
                 MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
                 MPI_Wait(&request, MPI_STATUSES_IGNORE);
@@ -215,6 +217,9 @@ int main(int argc, char* argv[])
 
                 MPI_Irecv(recv_buf, scatter_size, MPI_INT, (task_id - 1), 0, MPI_COMM_WORLD, &request);
                 MPI_Wait(&request, MPI_STATUSES_IGNORE);
+
+
+
                 /*if (task_id == target_id)
                     printf("BEFORE: %d \t", local_arr[index]);*/
                 local_arr[index] = *recv_buf;
@@ -223,7 +228,6 @@ int main(int argc, char* argv[])
                /* if (task_id == target_id)
                     printf("AFTER: %d \n", local_arr[index]);*/
             }
- 
             
 			for (int s = 0; s < num_elements; s++)
 			{
@@ -234,49 +238,53 @@ int main(int argc, char* argv[])
 
 				if (outgoing[s] != 1)
 				{
-					//    printf("[%d]: d_i_k: %d d_k_j: %d\n",task_id, d_i_k, d_k_j);
 
-
+					//all values initialized to -1, check to see if they have been changed
 					if (d_i_k >= 0 && d_k_j >= 0 && local_arr[s] >= 0)
 					{
-						if (d_i_k < INT_MAX && d_k_j < INT_MAX && (local_arr[s] >(d_i_k + d_k_j)))
+
+						if (d_i_k < INT_MAX && d_k_j < INT_MAX && (local_arr[s] > (d_i_k + d_k_j)))
 						{
+
 							if (local_arr[s] > (d_i_k + d_k_j))
 							{
 
 								local_arr[s] = (d_i_k + d_k_j);
 								/**/
-								if (task_id == target_id)
-									printf("LARGER index [%d] : %d + %d = %d, < %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);
+						/*		if (task_id == target_id)
+									printf("LARGER index [%d] : %d + %d = %d, < %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);*/
 							}
-							else
-							{
+						}
+						else
+						{
 
-								value = local_arr[s];
-								/**/
-								if (task_id == target_id)
-									printf("SMALLER index [%d] : %d + %d = %d, > %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);
-
-							}
-
-							outgoing[s] = 1;
+							value = local_arr[s];
+							/**/
 							/*if (task_id == target_id)
-								printf("data sent %d, %d \n", s, local_arr[s]);*/
-
-							if (task_id < num_task - 1)
-							{
-								data_send = s;
-								MPI_Isend(&data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
-
-								data_send = &local_arr[s];
-								MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
-								if (task_id == target_id)
-									printf("data sent %d, %d \n", s, local_arr[s]);
-							}
-							send_count++;
-
+								printf("SMALLER index [%d] : %d + %d = %d, > %d\n", s, d_i_k, d_k_j, d_i_k + d_k_j, local_arr[s]);*/
 
 						}
+
+						outgoing[s] = 1;
+						/*if (task_id == target_id)
+							printf("data sent %d, %d \n", s, local_arr[s]);*/
+
+						if (task_id < num_task - 1)
+						{
+							data_send = s;
+
+							MPI_Isend(&data_send, 1, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+							data_send = &local_arr[s];
+
+							MPI_Isend(data_send, scatter_size, MPI_INT, (task_id + 1), 0, MPI_COMM_WORLD, &request);
+
+							if (task_id == target_id)
+								printf("data sent %d, %d \n", s, local_arr[s]);
+						}
+						send_count++;
+
+
+						
 					}
 				}
 			}
