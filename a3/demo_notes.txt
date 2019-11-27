@@ -1,6 +1,3 @@
 bcast mpiexec -np 400 428.exe 20
 seq   mpiexec -np 1 428.exe 20
-
 pipe mpiexec -np 5 428.exe 5 
-max num proc = 
-max num nodes = 5
